@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from keyabra import __version__, find_dist_files, prompt_secret, run_with_env
+from keyabra.pypi_api import yank_release
 
 
 def _require(cmd: str) -> str:
@@ -123,16 +124,14 @@ def _cmd_pypi(argv: list[str]) -> int:
             ("xadabra", "0.1.0"),
             ("xadabra", "0.1.1"),
         ]
-        twine = _require("twine")
         token = prompt_secret("PyPI token (pypi-...)")
         for pkg, ver in releases:
             print(f"keyabra: yanking {pkg} {ver} ...")
-            rc = run_with_env(
-                [twine, "yank", pkg, ver, "-y", "--reason", reason],
-                {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
-            )
-            if rc != 0:
-                return rc
+            ok, msg = yank_release(pkg, ver, token, reason)
+            if not ok:
+                print(f"keyabra: failed {pkg} {ver}: {msg}", file=sys.stderr)
+                return 1
+            print(f"keyabra: {pkg} {ver} — {msg}")
         print("keyabra: all Noldorian public releases yanked")
         return 0
 
@@ -143,16 +142,14 @@ def _cmd_pypi(argv: list[str]) -> int:
         pkg = argv[1]
         versions = argv[2:]
         reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
-        twine = _require("twine")
         token = prompt_secret("PyPI token (pypi-...)")
         for ver in versions:
             print(f"keyabra: yanking {pkg} {ver} ...")
-            rc = run_with_env(
-                [twine, "yank", pkg, ver, "-y", "--reason", reason],
-                {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
-            )
-            if rc != 0:
-                return rc
+            ok, msg = yank_release(pkg, ver, token, reason)
+            if not ok:
+                print(f"keyabra: failed {pkg} {ver}: {msg}", file=sys.stderr)
+                return 1
+            print(f"keyabra: {pkg} {ver} — {msg}")
         return 0
 
     print("usage:", file=sys.stderr)

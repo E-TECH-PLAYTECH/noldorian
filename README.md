@@ -32,6 +32,6 @@ Prefer private GitHub installs. To yank old public releases:
 keyabra pypi yank-all
 ```
 
-## Private install (preferred)
+## Cloud (Claude Code)
 
 `xadabra --cloud` only — no `snx`. See `xadabra/integrations/CLAUDE-CLOUD.md`.
