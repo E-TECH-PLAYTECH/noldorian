@@ -113,9 +113,53 @@ def _cmd_pypi(argv: list[str]) -> int:
             cwd=project,
         )
 
+    if sub == "yank-all":
+        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
+        releases = [
+            ("binabra", "0.1.0"),
+            ("binabra", "0.1.1"),
+            ("keyabra", "0.1.0"),
+            ("keyabra", "0.1.1"),
+            ("xadabra", "0.1.0"),
+            ("xadabra", "0.1.1"),
+        ]
+        twine = _require("twine")
+        token = prompt_secret("PyPI token (pypi-...)")
+        for pkg, ver in releases:
+            print(f"keyabra: yanking {pkg} {ver} ...")
+            rc = run_with_env(
+                [twine, "yank", pkg, ver, "-y", "--reason", reason],
+                {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
+            )
+            if rc != 0:
+                return rc
+        print("keyabra: all Noldorian public releases yanked")
+        return 0
+
+    if sub == "yank":
+        if len(argv) < 3:
+            print("usage: keyabra pypi yank <package> <version> [version...]", file=sys.stderr)
+            return 1
+        pkg = argv[1]
+        versions = argv[2:]
+        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
+        twine = _require("twine")
+        token = prompt_secret("PyPI token (pypi-...)")
+        for ver in versions:
+            print(f"keyabra: yanking {pkg} {ver} ...")
+            rc = run_with_env(
+                [twine, "yank", pkg, ver, "-y", "--reason", reason],
+                {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
+            )
+            if rc != 0:
+                return rc
+        return 0
+
     print("usage:", file=sys.stderr)
     print("  keyabra pypi upload [dist/files...]", file=sys.stderr)
     print("  keyabra pypi publish [project-dir] [--skip-build]", file=sys.stderr)
+    print("  keyabra pypi yank-all              yank all public Noldorian releases", file=sys.stderr)
+    print("  keyabra pypi yank <pkg> <ver>...   yank specific release(s)", file=sys.stderr)
     return 1
 
 
@@ -127,7 +171,8 @@ def main(argv: list[str] | None = None) -> int:
             f"""keyabra {__version__} — prompt for secrets, run commands (no notepad dance)
 
   keyabra pypi publish [dir]         build → prompt token → twine upload
-  keyabra pypi upload [files...]     prompt token → twine upload
+  keyabra pypi yank-all              yank public binabra/keyabra/xadabra 0.1.x
+  keyabra pypi yank <pkg> <ver>...   yank specific release(s)
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
 
 Examples:

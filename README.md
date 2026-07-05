@@ -26,10 +26,12 @@ pip install "git+ssh://git@github.com/Everplay-Tech/noldorian.git#subdirectory=x
 
 ## Publish to PyPI (maintainers)
 
+Prefer private GitHub installs. To yank old public releases:
+
 ```bash
-cd xadabra && keyabra pypi publish
+keyabra pypi yank-all
 ```
 
-## Cloud (Claude Code)
+## Private install (preferred)
 
 `xadabra --cloud` only — no `snx`. See `xadabra/integrations/CLAUDE-CLOUD.md`.
