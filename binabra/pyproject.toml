@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "binabra"
+version = "0.1.1"
+description = "Portable bin-directory anchor for shell scripts — use sibling tools from anywhere"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "LicenseRef-Proprietary"
+license-files = ["LICENSE"]
+authors = [{ name = "Everplay-Tech LLC" }]
+keywords = ["shell", "bin", "path", "cli", "scripts", "abra", "noldorian"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: Other/Proprietary License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Topic :: System :: Systems Administration",
+]
+dependencies = []
+
+[project.scripts]
+abra = "binabra.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/librarynth2/binabra"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/binabra"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/binabra", "README.md"]
