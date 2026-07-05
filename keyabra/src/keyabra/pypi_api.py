@@ -5,34 +5,44 @@ from __future__ import annotations
 import base64
 import json
 import urllib.error
-import urllib.parse
 import urllib.request
 
 PYPI_URL = "https://pypi.org"
 
 
 def yank_release(package: str, version: str, token: str, reason: str) -> tuple[bool, str]:
-    """Yank a release on PyPI. Returns (ok, message)."""
-    url = f"{PYPI_URL}/pypi/{package}/{version}/yank/"
-    data = urllib.parse.urlencode({"reason": reason}).encode()
+    """Yank a release on PyPI via Warehouse API. Returns (ok, message)."""
+    url = f"{PYPI_URL}/api/projects/{package}/{version}"
+    body = json.dumps({"yanked": True, "yanked_reason": reason}).encode()
     auth = base64.b64encode(f"__token__:{token}".encode()).decode()
     req = urllib.request.Request(
         url,
-        data=data,
-        method="POST",
+        data=body,
+        method="PATCH",
         headers={
             "Authorization": f"Basic {auth}",
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
         },
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
-            body = resp.read().decode().strip()
-            return True, body or "yanked"
+            raw = resp.read().decode().strip()
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    yanked = data.get("yanked", True)
+                    return True, f"yanked={yanked}"
+                except json.JSONDecodeError:
+                    pass
+            return True, "yanked"
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode().strip()
         try:
-            detail = json.loads(detail).get("message", detail)
+            parsed = json.loads(detail)
+            detail = parsed.get("message") or parsed.get("error") or detail
         except json.JSONDecodeError:
             pass
+        if len(detail) > 200:
+            detail = detail[:200] + "..."
         return False, f"HTTP {exc.code}: {detail}"
