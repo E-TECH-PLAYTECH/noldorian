@@ -34,7 +34,7 @@ Planned progression (operator tools, not spells):
 | `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.) |
 | `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
 
-Source lives in this repo (`Everplay-Tech/noldorian`) — one subdirectory per package.
+Source lives in `~/Projects/<name>/`, published separately from this repo.
 
 ---
 

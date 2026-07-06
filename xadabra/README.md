@@ -56,6 +56,28 @@ xadabra --dry-run    # preview only
 xadabra --yes        # skip confirmation
 ```
 
+## Noldorian private GitHub (`xadabra noldorian`)
+
+Turn the private-repo walkthrough into commands:
+
+```bash
+xadabra noldorian guide          # checklist (browser steps + commands)
+xadabra noldorian pack           # copy binabra/keyabra/xadabra → ~/Projects/noldorian
+xadabra noldorian push           # git commit, tag, push (prompts org/repo)
+xadabra noldorian install        # pip install lines from private GitHub
+xadabra noldorian yank           # yank public PyPI versions (token prompt)
+
+# Or paste-once full flow (copy template → xadabra):
+xadabra noldorian script --copy  # clipboard
+xadabra                          # prompts ORG/REPO/paths, preview, run
+```
+
+Template path (for `xadabra path/to/template.sh`):
+
+```bash
+xadabra noldorian script --path
+```
+
 ## Safety
 
 - No network, no telemetry

@@ -81,6 +81,13 @@ def run_pipeline(
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(argv if argv is not None else sys.argv[1:])
+
+    if argv and argv[0] == "noldorian":
+        from xadabra.noldorian import main as noldorian_main
+
+        return noldorian_main(argv[1:])
+
     parser = argparse.ArgumentParser(
         prog="xadabra",
         description="Paste-once runner for AI shell blocks with {{placeholders}}",
