@@ -5,8 +5,8 @@ set -euo pipefail
 ORG="{{ORG:GitHub org:Everplay-Tech}}"
 REPO="{{REPO:Private repo name:noldorian}}"
 TAG="{{TAG:Git tag:v0.1.1}}"
-DEST="{{DEST|path:Monorepo folder (e.g. ~/Projects/noldorian)}}"
-PROJECTS="{{PROJECTS|path:Projects parent (e.g. ~/Projects)}}"
+DEST="{{DEST|path:Monorepo folder (e.g. ~/noldorian)}}"
+PROJECTS="{{PROJECTS|path:Monorepo root (e.g. ~/noldorian)}}"
 
 echo "=== pack monorepo ==="
 xadabra noldorian pack --dest "$DEST" --projects-dir "$PROJECTS" --org "$ORG" --repo "$REPO" --tag "$TAG" --force

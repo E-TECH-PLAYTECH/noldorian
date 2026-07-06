@@ -62,7 +62,7 @@ Turn the private-repo walkthrough into commands:
 
 ```bash
 xadabra noldorian guide          # checklist (browser steps + commands)
-xadabra noldorian pack           # copy binabra/keyabra/xadabra → ~/Projects/noldorian
+xadabra noldorian pack           # refresh ~/noldorian subdirs
 xadabra noldorian push           # git commit, tag, push (prompts org/repo)
 xadabra noldorian install        # pip install lines from private GitHub
 xadabra noldorian yank           # yank public PyPI versions (token prompt)
@@ -88,13 +88,13 @@ xadabra noldorian script --path
 
 ```bash
 pip install binabra keyabra build twine
-cd ~/Projects/xadabra && python3 -m build
+cd ~/noldorian/xadabra && python3 -m build
 keyabra pypi publish
 ```
 
 ## Tests
 
 ```bash
-cd ~/Projects/xadabra
+cd ~/noldorian/xadabra
 python3 -m unittest discover -s tests -v
 ```

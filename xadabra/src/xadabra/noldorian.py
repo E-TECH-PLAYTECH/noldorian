@@ -49,7 +49,7 @@ def cmd_guide(_: argparse.Namespace) -> int:
               2. SSH key on GitHub if needed: ssh -T git@github.com
 
             AUTOMATED (this tool):
-              xadabra noldorian pack          # scaffold ~/Projects/noldorian
+              xadabra noldorian pack          # scaffold ~/noldorian
               xadabra noldorian push          # commit, tag, push (prompts org/repo)
               xadabra noldorian install       # print pip install lines
               xadabra noldorian yank          # yank public PyPI versions (token prompt)
@@ -298,9 +298,9 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("guide", help="print walkthrough checklist")
     p.set_defaults(func=cmd_guide)
 
-    p = sub.add_parser("pack", help="scaffold monorepo from ~/Projects/*abra")
-    p.add_argument("--dest", default="~/Projects/noldorian")
-    p.add_argument("--projects-dir", default="~/Projects")
+    p = sub.add_parser("pack", help="scaffold monorepo (default ~/noldorian)")
+    p.add_argument("--dest", default="~/noldorian")
+    p.add_argument("--projects-dir", default="~/noldorian")
     p.add_argument("--org", default=None)
     p.add_argument("--repo", default=None)
     p.add_argument("--tag", default=None)
@@ -308,7 +308,7 @@ def main(argv: list[str] | None = None) -> int:
     p.set_defaults(func=cmd_pack)
 
     p = sub.add_parser("push", help="git commit, tag, and push to GitHub")
-    p.add_argument("--dest", default="~/Projects/noldorian")
+    p.add_argument("--dest", default="~/noldorian")
     p.add_argument("--org", default=None)
     p.add_argument("--repo", default=None)
     p.add_argument("--tag", default=None)
