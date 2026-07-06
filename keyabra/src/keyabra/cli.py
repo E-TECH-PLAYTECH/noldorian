@@ -7,7 +7,12 @@ import sys
 from pathlib import Path
 
 from keyabra import __version__, find_dist_files, prompt_secret, run_with_env
-from keyabra.pypi_api import yank_release
+from keyabra.pypi_api import (
+    DEFAULT_YANK_REASON,
+    manage_releases_url,
+    release_yanked,
+    yank_manual_steps,
+)
 
 
 def _require(cmd: str) -> str:
@@ -66,6 +71,101 @@ def _cmd_run(argv: list[str]) -> int:
     return run_with_env(command, env_vars)
 
 
+NOLDORIAN_RELEASES = [
+    ("binabra", "0.1.0"),
+    ("binabra", "0.1.1"),
+    ("keyabra", "0.1.0"),
+    ("keyabra", "0.1.1"),
+    ("xadabra", "0.1.0"),
+    ("xadabra", "0.1.1"),
+]
+
+
+def _print_release_status(releases: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Print status lines; return releases that are still public."""
+    still_public: list[tuple[str, str]] = []
+    for pkg, ver in releases:
+        state = release_yanked(pkg, ver)
+        label = {True: "yanked", False: "public", None: "missing"}[state]
+        print(f"keyabra: {pkg} {ver} — {label}")
+        if state is False:
+            still_public.append((pkg, ver))
+    return still_public
+
+
+def _open_manage_pages(packages: list[str]) -> None:
+    for pkg in packages:
+        url = manage_releases_url(pkg)
+        print(f"keyabra: opening {url}")
+        subprocess.run(["open", url], check=False)
+
+
+def _cmd_yank_all(argv: list[str]) -> int:
+    flags = {a for a in argv if a.startswith("--")}
+    releases = NOLDORIAN_RELEASES
+
+    if "--open" in flags:
+        seen = sorted({pkg for pkg, _ver in releases})
+        _open_manage_pages(seen)
+        return 0
+
+    still_public = _print_release_status(releases)
+    if not still_public:
+        print("keyabra: all Noldorian public releases are yanked")
+        return 0
+
+    print()
+    print("keyabra: PyPI has no programmatic yank API — use the web UI for each public release:")
+    print(f"keyabra: reason → {DEFAULT_YANK_REASON}")
+    print()
+    seen_pkg: set[str] = set()
+    for pkg, ver in still_public:
+        if pkg not in seen_pkg:
+            print(yank_manual_steps(pkg, ver))
+            seen_pkg.add(pkg)
+        else:
+            print(f"   (same page) version {ver} → Options → Yank")
+    print()
+    print("keyabra: open manage pages → keyabra pypi yank-all --open")
+    return 1
+
+
+def _cmd_yank(argv: list[str]) -> int:
+    if len(argv) < 2:
+        print("usage: keyabra pypi yank <package> <version> [version...] [--open]", file=sys.stderr)
+        return 1
+    flags = {a for a in argv if a.startswith("--")}
+    args = [a for a in argv if not a.startswith("--")]
+    pkg = args[0]
+    versions = args[1:]
+    if not versions:
+        print("usage: keyabra pypi yank <package> <version> [version...] [--open]", file=sys.stderr)
+        return 1
+
+    if "--open" in flags:
+        _open_manage_pages([pkg])
+        return 0
+
+    still_public: list[tuple[str, str]] = []
+    for ver in versions:
+        state = release_yanked(pkg, ver)
+        label = {True: "yanked", False: "public", None: "missing"}[state]
+        print(f"keyabra: {pkg} {ver} — {label}")
+        if state is False:
+            still_public.append((pkg, ver))
+
+    if not still_public:
+        return 0
+
+    print()
+    print(yank_manual_steps(pkg, still_public[0][1]))
+    for _pkg, ver in still_public[1:]:
+        print(f"   version {ver} → Options → Yank")
+    print()
+    print(f"keyabra: open manage page → keyabra pypi yank {pkg} {versions[0]} --open")
+    return 1
+
+
 def _cmd_pypi(argv: list[str]) -> int:
     sub = argv[0] if argv else "upload"
 
@@ -115,48 +215,16 @@ def _cmd_pypi(argv: list[str]) -> int:
         )
 
     if sub == "yank-all":
-        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
-        releases = [
-            ("binabra", "0.1.0"),
-            ("binabra", "0.1.1"),
-            ("keyabra", "0.1.0"),
-            ("keyabra", "0.1.1"),
-            ("xadabra", "0.1.0"),
-            ("xadabra", "0.1.1"),
-        ]
-        token = prompt_secret("PyPI token (pypi-...)")
-        for pkg, ver in releases:
-            print(f"keyabra: yanking {pkg} {ver} ...")
-            ok, msg = yank_release(pkg, ver, token, reason)
-            if not ok:
-                print(f"keyabra: failed {pkg} {ver}: {msg}", file=sys.stderr)
-                return 1
-            print(f"keyabra: {pkg} {ver} — {msg}")
-        print("keyabra: all Noldorian public releases yanked")
-        return 0
+        return _cmd_yank_all(argv[1:])
 
     if sub == "yank":
-        if len(argv) < 3:
-            print("usage: keyabra pypi yank <package> <version> [version...]", file=sys.stderr)
-            return 1
-        pkg = argv[1]
-        versions = argv[2:]
-        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
-        token = prompt_secret("PyPI token (pypi-...)")
-        for ver in versions:
-            print(f"keyabra: yanking {pkg} {ver} ...")
-            ok, msg = yank_release(pkg, ver, token, reason)
-            if not ok:
-                print(f"keyabra: failed {pkg} {ver}: {msg}", file=sys.stderr)
-                return 1
-            print(f"keyabra: {pkg} {ver} — {msg}")
-        return 0
+        return _cmd_yank(argv[1:])
 
     print("usage:", file=sys.stderr)
     print("  keyabra pypi upload [dist/files...]", file=sys.stderr)
     print("  keyabra pypi publish [project-dir] [--skip-build]", file=sys.stderr)
-    print("  keyabra pypi yank-all              yank all public Noldorian releases", file=sys.stderr)
-    print("  keyabra pypi yank <pkg> <ver>...   yank specific release(s)", file=sys.stderr)
+    print("  keyabra pypi yank-all [--open]       status + manual yank guide", file=sys.stderr)
+    print("  keyabra pypi yank <pkg> <ver>... [--open]", file=sys.stderr)
     return 1
 
 
@@ -168,8 +236,8 @@ def main(argv: list[str] | None = None) -> int:
             f"""keyabra {__version__} — prompt for secrets, run commands (no notepad dance)
 
   keyabra pypi publish [dir]         build → prompt token → twine upload
-  keyabra pypi yank-all              yank public binabra/keyabra/xadabra 0.1.x
-  keyabra pypi yank <pkg> <ver>...   yank specific release(s)
+  keyabra pypi yank-all [--open]       check status; open PyPI manage pages
+  keyabra pypi yank <pkg> <ver>... [--open]
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
 
 Examples:

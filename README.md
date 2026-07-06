@@ -26,11 +26,13 @@ pip install "git+ssh://git@github.com/Everplay-Tech/noldorian.git#subdirectory=x
 
 ## Publish to PyPI (maintainers)
 
-Prefer private GitHub installs. To yank old public releases:
+Prefer private GitHub installs. To yank old public releases (web UI only — no PyPI API):
 
 ```bash
-keyabra pypi yank-all
+keyabra pypi yank-all --open
 ```
+
+Then for each version: **Options → Yank**, reason `Moved to private GitHub: https://github.com/Everplay-Tech/noldorian`
 
 ## Cloud (Claude Code)
 
