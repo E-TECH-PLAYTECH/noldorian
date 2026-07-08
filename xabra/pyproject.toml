@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xabra"
-version = "0.2.0"
+version = "0.3.0"
 description = "Install, update, and open Everplay-Tech direct-distribution apps (the ones that don't come from the App Store)"
 readme = "README.md"
 requires-python = ">=3.9"

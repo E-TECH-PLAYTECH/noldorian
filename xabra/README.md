@@ -25,9 +25,19 @@ xabra --doctor                              # gh auth + macOS tool check
 
 Apps that embed an MCP protocol binary (dud3runner → `dude-mcp`) declare it in
 their spec; `--status` then reports enrollment **drift** (agent sessions running
-a different binary than the installed app), and `--update --protocol` repoints
-`~/.claude.json` at the app's embedded binary — with a backup banked first — so
-every future app update updates the protocol serving agents too.
+a different binary than the installed app). `--update --protocol` converges,
+idempotently, on the steady state:
+
+```
+~/.claude.json enrollment → ~/.local/bin/<mcp_name> shim → installed app's binary
+```
+
+The shim path never changes, so once converged, **app updates propagate to
+agents automatically** — no re-enrollment, no manual refresh. `--install` /
+`--update` of a protocol-bearing app re-converges as part of the install.
+Re-running is always safe ("already converged" is a no-op). `~/.claude.json`
+edits bank a backup first. Running sessions keep the server they spawned;
+each new session picks up the current binary through the shim.
 
 Add `--json` to anything for a machine-readable receipt. Mutating actions
 always bank a receipt at `~/.local/state/xabra/receipts/` and back up the

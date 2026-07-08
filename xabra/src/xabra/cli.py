@@ -161,6 +161,10 @@ def act_install(apps: dict, name: str | None, dmg: str | None, yes: bool,
             install_dmg_app(spec, payload, receipt)
         receipt.update(installed_app_info(spec))
         receipt["ok"] = True
+        if spec.get("protocol"):
+            proto_receipt: dict = {}
+            repoint_protocol(spec, proto_receipt)
+            receipt["protocol"] = proto_receipt.get("protocol_after")
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
         receipt["receipt"] = str(bank_receipt(receipt))

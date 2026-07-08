@@ -204,16 +204,37 @@ def _bin_version(path: str | Path) -> str | None:
     return (out.stdout or out.stderr).strip()[:80] or None
 
 
+def _shim_path(proto: dict) -> Path:
+    return BIN_DIR / proto["mcp_name"]
+
+
+def _shim_target(shim: Path) -> str | None:
+    """The path a xabra shim execs, or None if not a xabra shim."""
+    if not shim.is_file():
+        return None
+    for line in shim.read_text().splitlines():
+        if line.startswith("exec "):
+            return line.split('"')[1] if '"' in line else None
+    return None
+
+
 def protocol_info(spec: dict) -> dict:
-    """Installed protocol binary vs what MCP consumers are enrolled to run."""
+    """Installed protocol binary vs what MCP consumers are enrolled to run.
+
+    Healthy steady state: enrollment → stable shim → installed app binary.
+    Then app updates propagate to agents with no re-enrollment (idempotent).
+    """
     proto = spec.get("protocol")
     if not proto:
         return {}
     app_bin = APPLICATIONS / spec["app"] / proto["bin"]
+    shim = _shim_path(proto)
     info: dict = {
         "mcp_name": proto["mcp_name"],
         "app_bin": str(app_bin),
         "app_bin_version": _bin_version(app_bin),
+        "shim": str(shim),
+        "shim_target": _shim_target(shim),
     }
     if MCP_CONFIG.is_file():
         try:
@@ -222,40 +243,60 @@ def protocol_info(spec: dict) -> dict:
             entry = None
         if entry:
             info["enrolled_command"] = entry.get("command")
-            info["enrolled_version"] = _bin_version(entry.get("command", ""))
-    info["drift"] = info.get("enrolled_command") != str(app_bin)
+    # What a fresh agent session would actually execute:
+    effective = info.get("enrolled_command")
+    if effective == str(shim):
+        effective = info["shim_target"]
+    info["effective_bin"] = effective
+    info["effective_version"] = _bin_version(effective) if effective else None
+    info["drift"] = effective != str(app_bin)
     return info
 
 
 def repoint_protocol(spec: dict, receipt: dict) -> None:
-    """Point the MCP enrollment at the installed app's embedded protocol binary."""
+    """Converge enrollment → shim → installed app binary. Safe to re-run."""
     proto = spec["protocol"]
     info = protocol_info(spec)
     receipt["protocol_before"] = info
     if info.get("app_bin_version") is None:
         raise SystemExit(f"xabra: no protocol binary at {info['app_bin']} — install the app first")
-    if not info["drift"]:
-        receipt.update(ok=True, skipped="enrollment already points at the installed app")
-        return
-    if not MCP_CONFIG.is_file():
-        raise SystemExit(f"xabra: {MCP_CONFIG} not found — enroll {proto['mcp_name']} once first")
-    cfg = json.loads(MCP_CONFIG.read_text())
-    servers = cfg.setdefault("mcpServers", {})
-    if proto["mcp_name"] not in servers:
-        raise SystemExit(f"xabra: '{proto['mcp_name']}' not enrolled in {MCP_CONFIG}")
-    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    backup = BACKUP_DIR / f"claude.json.{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
-    shutil.copy2(MCP_CONFIG, backup)
-    receipt["backup"] = str(backup)
-    servers[proto["mcp_name"]] = {
-        **servers[proto["mcp_name"]],
-        "command": info["app_bin"],
-        "args": list(proto.get("serve_args", [])),
-    }
-    MCP_CONFIG.write_text(json.dumps(cfg, indent=2) + "\n")
-    receipt["protocol_after"] = protocol_info(spec)
-    receipt["note"] = "new enrollment takes effect when the next agent session spawns the server"
-    receipt["ok"] = True
+
+    shim = _shim_path(proto)
+    if info["shim_target"] != info["app_bin"]:
+        BIN_DIR.mkdir(parents=True, exist_ok=True)
+        shim.write_text(
+            "#!/bin/sh\n"
+            "# xabra protocol shim — stable enrollment target; execs the installed app's\n"
+            "# embedded MCP binary so app updates reach agents with no re-enrollment.\n"
+            f'exec "{info["app_bin"]}" "$@"\n')
+        shim.chmod(0o755)
+        receipt["shim_written"] = str(shim)
+
+    if info.get("enrolled_command") != str(shim):
+        if not MCP_CONFIG.is_file():
+            raise SystemExit(f"xabra: {MCP_CONFIG} not found — enroll {proto['mcp_name']} once first")
+        cfg = json.loads(MCP_CONFIG.read_text())
+        servers = cfg.setdefault("mcpServers", {})
+        if proto["mcp_name"] not in servers:
+            raise SystemExit(f"xabra: '{proto['mcp_name']}' not enrolled in {MCP_CONFIG}")
+        BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+        backup = BACKUP_DIR / f"claude.json.{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
+        shutil.copy2(MCP_CONFIG, backup)
+        receipt["backup"] = str(backup)
+        servers[proto["mcp_name"]] = {
+            **servers[proto["mcp_name"]],
+            "command": str(shim),
+            "args": list(proto.get("serve_args", [])),
+        }
+        MCP_CONFIG.write_text(json.dumps(cfg, indent=2) + "\n")
+
+    after = protocol_info(spec)
+    receipt["protocol_after"] = after
+    if not receipt.get("shim_written") and not receipt.get("backup"):
+        receipt["skipped"] = "already converged — enrollment → shim → installed app"
+    else:
+        receipt["note"] = "running sessions keep their spawned server; new sessions get the shim path"
+    receipt["ok"] = not after["drift"]
 
 
 # ---------------------------------------------------------------- receipts
