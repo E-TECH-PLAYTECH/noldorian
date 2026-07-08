@@ -6,7 +6,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from keyabra import __version__, find_dist_files, prompt_secret, run_with_env
+from keyabra import (
+    ENV_DIR,
+    __version__,
+    find_dist_files,
+    load_env_file,
+    prompt_secret,
+    run_with_env,
+)
 
 
 def _require(cmd: str) -> str:
@@ -30,6 +37,7 @@ def _require(cmd: str) -> str:
 
 def _cmd_run(argv: list[str]) -> int:
     env_names: list[str] = []
+    env_files: list[str] = []
     i = 0
     while i < len(argv) and argv[i] != "--":
         if argv[i] == "--env" and i + 1 < len(argv):
@@ -40,11 +48,22 @@ def _cmd_run(argv: list[str]) -> int:
             env_names.append(argv[i].split("=", 1)[1])
             i += 1
             continue
+        if argv[i] == "--env-file" and i + 1 < len(argv):
+            env_files.append(argv[i + 1])
+            i += 2
+            continue
+        if argv[i].startswith("--env-file="):
+            env_files.append(argv[i].split("=", 1)[1])
+            i += 1
+            continue
         print(f"keyabra: unexpected arg '{argv[i]}'", file=sys.stderr)
         return 1
 
-    if not env_names:
-        print("usage: keyabra run --env NAME [--env NAME2 ...] -- <command> [args...]", file=sys.stderr)
+    if not env_names and not env_files:
+        print(
+            "usage: keyabra run [--env-file PATH ...] [--env NAME ...] -- <command> [args...]",
+            file=sys.stderr,
+        )
         return 1
 
     try:
@@ -59,10 +78,98 @@ def _cmd_run(argv: list[str]) -> int:
         return 1
 
     env_vars: dict[str, str] = {}
+    # Vault files first (no prompting), then interactive --env on top.
+    for f in env_files:
+        try:
+            env_vars.update(load_env_file(f))
+        except Exception as exc:
+            print(f"keyabra: {exc}", file=sys.stderr)
+            return 1
     for name in env_names:
         env_vars[name] = prompt_secret(name)
 
     return run_with_env(command, env_vars)
+
+
+def _cmd_env(argv: list[str]) -> int:
+    """Owner-side vault management: init / set / set-file / list."""
+    sub = argv[0] if argv else "list"
+    default_vault = ENV_DIR / "keyabra.env"
+
+    def vault_path(args: list[str]) -> Path:
+        for j, a in enumerate(args):
+            if a == "--file" and j + 1 < len(args):
+                return Path(args[j + 1]).expanduser()
+        return default_vault
+
+    def ensure_vault(p: Path) -> None:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        os.chmod(p.parent, 0o700)
+        if not p.exists():
+            fd = os.open(p, os.O_WRONLY | os.O_CREAT, 0o600)
+            os.close(fd)
+        os.chmod(p, 0o600)
+
+    def upsert(p: Path, name: str, rhs: str) -> None:
+        ensure_vault(p)
+        lines = p.read_text().splitlines()
+        key = name.partition("=")[0]
+        lines = [
+            l for l in lines
+            if not (l.split("=", 1)[0].strip() in (key,) and "=" in l)
+        ]
+        lines.append(f"{name}={rhs}")
+        p.write_text("\n".join(lines) + "\n")
+        os.chmod(p, 0o600)
+        print(f"keyabra: {key} set in {p}")
+
+    if sub == "init":
+        p = vault_path(argv[1:])
+        ensure_vault(p)
+        print(f"keyabra: vault ready at {p} (0600)")
+        return 0
+
+    if sub == "set" and len(argv) >= 2:
+        p = vault_path(argv[2:])
+        value = prompt_secret(argv[1])
+        upsert(p, argv[1], value)
+        return 0
+
+    if sub == "set-file" and len(argv) >= 3:
+        # Store a POINTER to the file (NAME__FILE=path) — the secret material
+        # stays where it already lives; run-time resolution reads it fresh.
+        p = vault_path(argv[3:])
+        target = Path(argv[2]).expanduser().resolve()
+        if not target.is_file():
+            print(f"keyabra: no such file: {target}", file=sys.stderr)
+            return 1
+        upsert(p, f"{argv[1]}__FILE", str(target))
+        return 0
+
+    if sub == "list":
+        p = vault_path(argv[1:])
+        if not p.is_file():
+            print(f"keyabra: no vault at {p}")
+            return 0
+        names = [
+            line.split("=", 1)[0].strip()
+            for line in p.read_text().splitlines()
+            if line.strip() and not line.strip().startswith("#") and "=" in line
+        ]
+        print(f"{p}:")
+        for n in names:
+            print(f"  {n}")
+        return 0
+
+    print(
+        "usage:\n"
+        "  keyabra env init [--file PATH]\n"
+        "  keyabra env set NAME [--file PATH]           prompt -> store value\n"
+        "  keyabra env set-file NAME /path [--file PATH]  store NAME__FILE pointer\n"
+        "  keyabra env list [--file PATH]               names only, never values",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def _cmd_pypi(argv: list[str]) -> int:
@@ -174,11 +281,18 @@ def main(argv: list[str] | None = None) -> int:
   keyabra pypi yank-all              yank public binabra/keyabra/xadabra 0.1.x
   keyabra pypi yank <pkg> <ver>...   yank specific release(s)
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
+  keyabra run --env-file P -- cmd    load a 0600 env-vault → run command
+  keyabra env init|set|set-file|list manage the vault (~/.config/keyabra/)
+
+Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
+NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
 
 Examples:
   cd ~/Projects/binabra && keyabra pypi publish
   keyabra pypi upload dist/*
   keyabra run --env GITHUB_TOKEN -- gh release create ...
+  keyabra env set-file ASC_API_KEY_P8 ~/Downloads/AuthKey_XXXX.p8
+  keyabra run --env-file ~/.config/keyabra/keyabra.env -- ./deploy.sh
 
   pip install keyabra
 """
@@ -191,6 +305,9 @@ Examples:
 
     if argv[0] == "run":
         return _cmd_run(argv[1:])
+
+    if argv[0] == "env":
+        return _cmd_env(argv[1:])
 
     if argv[0] == "pypi":
         return _cmd_pypi(argv[1:])

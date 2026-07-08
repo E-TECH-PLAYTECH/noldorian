@@ -31,7 +31,7 @@ Planned progression (operator tools, not spells):
 | Package | CLI | Role |
 |---------|-----|------|
 | `binabra` | `abra` | Bin-directory anchor — `source "$(abra sh)"` |
-| `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.) |
+| `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.). 0.2.0: **env-vaults** — 0600 files of `NAME=value` / `NAME__FILE=path` / `NAME__CMD=cmd` pointers, loaded in-process via `keyabra run --env-file` (canonical: `~/.config/keyabra/everplay-release.env`) |
 | `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
 
 Source lives in `~/Projects/<name>/`, published separately from this repo.
