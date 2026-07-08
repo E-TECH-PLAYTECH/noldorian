@@ -192,6 +192,32 @@ def install_cli(spec: dict, tarball: Path, receipt: dict) -> None:
         receipt["installed_path"] = str(target)
 
 
+def dmg_embedded_info(dmg: Path) -> dict:
+    """Version/build of the .app inside a dmg, via a readonly probe mount."""
+    if not dmg.is_file():
+        return {}
+    mount = Path(tempfile.mkdtemp(prefix="xabra-probe-"))
+    out = sh(["hdiutil", "attach", str(dmg), "-nobrowse", "-readonly",
+              "-mountpoint", str(mount)])
+    if out.returncode != 0:
+        return {}
+    try:
+        apps = list(mount.glob("*.app"))
+        if not apps:
+            return {}
+        plist = apps[0] / "Contents/Info.plist"
+
+        def _key(name: str) -> str | None:
+            o = sh(["defaults", "read", str(plist.with_suffix("")), name])
+            return (o.stdout.strip() or None) if o.returncode == 0 else None
+
+        return {"app": apps[0].name,
+                "version": _key("CFBundleShortVersionString"),
+                "build": _key("CFBundleVersion")}
+    finally:
+        sh(["hdiutil", "detach", str(mount), "-quiet"])
+
+
 # ---------------------------------------------------------------- protocol
 
 MCP_CONFIG = Path.home() / ".claude.json"
@@ -250,6 +276,16 @@ def protocol_info(spec: dict) -> dict:
     info["effective_bin"] = effective
     info["effective_version"] = _bin_version(effective) if effective else None
     info["drift"] = effective != str(app_bin)
+    # Which binary is live-serving right now (running sessions keep the server
+    # they spawned; this is the receipt for "what dude-mcp do I have NOW").
+    procs = sh(["pgrep", "-fl", proto["mcp_name"]])
+    info["running"] = [
+        {"pid": int(line.split(None, 1)[0]),
+         "command": line.split(None, 1)[1],
+         "is_installed_app": str(app_bin) in line}
+        for line in procs.stdout.splitlines()
+        if proto["mcp_name"] in line and "pgrep" not in line
+    ]
     return info
 
 

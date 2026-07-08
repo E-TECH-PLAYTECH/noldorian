@@ -30,6 +30,7 @@ from xabra import __version__, load_registry
 from xabra.core import (
     APPLICATIONS,
     bank_receipt,
+    dmg_embedded_info,
     emit,
     fetch,
     install_cli,
@@ -67,14 +68,20 @@ def _digits(text: str | None) -> int | None:
 
 
 def newer_available(installed: dict, source: dict) -> bool:
-    """Fuzzy but honest: trailing build number wins; else any difference counts."""
+    """Honest comparison: build numbers when we can get them, else difference counts."""
     if not installed.get("installed"):
         return bool(source)
     if not source:
         return False
     have = _digits(installed.get("build") or installed.get("version"))
+    if source["type"] == "local" and source["resolved"].endswith(".dmg"):
+        probe = dmg_embedded_info(Path(source["resolved"]))
+        want = _digits(probe.get("build") or probe.get("version"))
+        if have is not None and want is not None:
+            return want > have
+        return False  # unreadable dmg — don't churn installs on a guess
     want = _digits(source.get("resolved"))
-    if have is not None and want is not None and source["type"] != "local":
+    if have is not None and want is not None:
         return want > have
     return True  # can't compare — surface it as updatable, install verifies
 
