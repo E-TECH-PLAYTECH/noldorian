@@ -7,6 +7,7 @@ Flag-driven, one action per invocation:
     xabra --app dud3runner --install [--yes] [--dmg PATH]
     xabra --app dud3runner --update  [--yes]
     xabra --update --all [--yes]
+    xabra --app dud3runner --update --protocol [--yes]
     xabra --app dud3runner --open
     xabra --doctor
 
@@ -34,6 +35,8 @@ from xabra.core import (
     install_cli,
     install_dmg_app,
     installed_app_info,
+    protocol_info,
+    repoint_protocol,
     resolve_source,
     sh,
 )
@@ -101,8 +104,29 @@ def act_status(apps: dict, name: str | None, as_json: bool) -> int:
         "installed": installed, "available": source or None,
         "update_available": newer_available(installed, source),
     }
+    proto = protocol_info(spec)
+    if proto:
+        receipt["protocol"] = proto
     emit(receipt, as_json)
     return 0
+
+
+def act_protocol_update(apps: dict, name: str | None, yes: bool, as_json: bool) -> int:
+    name, spec = _pick_app(apps, name)
+    if not spec.get("protocol"):
+        raise SystemExit(f"xabra: '{name}' declares no protocol binary")
+    receipt: dict = {"action": "protocol-update", "app": name, "ok": False}
+    info = protocol_info(spec)
+    if info["drift"]:
+        _confirm(
+            f"xabra: point MCP '{info['mcp_name']}' at {info['app_bin']} "
+            f"(was {info.get('enrolled_command')})?", yes)
+    try:
+        repoint_protocol(spec, receipt)
+    finally:
+        receipt["receipt"] = str(bank_receipt(receipt))
+        emit(receipt, as_json)
+    return 0 if receipt["ok"] else 1
 
 
 def act_install(apps: dict, name: str | None, dmg: str | None, yes: bool,
@@ -201,6 +225,8 @@ def main(argv: list[str] | None = None) -> int:
     action.add_argument("--open", action="store_true", help="open the installed app")
     action.add_argument("--doctor", action="store_true", help="check gh auth + macOS tools")
     ap.add_argument("--all", action="store_true", help="with --update: every known app")
+    ap.add_argument("--protocol", action="store_true",
+                    help="with --update: repoint the app's MCP enrollment at the installed binary")
     ap.add_argument("--dmg", metavar="PATH", help="install from this local dmg/tar.gz")
     ap.add_argument("--yes", action="store_true", help="skip the confirm prompt")
     ap.add_argument("--json", action="store_true", help="print the receipt as JSON")
@@ -216,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.install:
         return act_install(apps, args.app, args.dmg, args.yes, args.json)
     if args.update:
+        if args.protocol:
+            return act_protocol_update(apps, args.app, args.yes, args.json)
         if args.all:
             return act_update_all(apps, args.yes, args.json)
         return act_install(apps, args.app, args.dmg, args.yes, args.json, only_if_newer=True)

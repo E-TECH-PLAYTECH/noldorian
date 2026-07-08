@@ -11,7 +11,7 @@ import json
 import os
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 STATE_DIR = Path(os.environ.get("XABRA_STATE", Path.home() / ".local/state/xabra"))
 RECEIPT_DIR = STATE_DIR / "receipts"
@@ -35,6 +35,13 @@ BUILTIN_APPS: dict[str, dict] = {
             {"type": "artifact", "repo": "Everplay-Tech/dud3-p0", "pattern": "DUD3Runner-build-*"},
             {"type": "local", "path": "~/dud3-p0/build/DUD3Runner.dmg"},
         ],
+        # MCP protocol binary embedded in the app; --protocol keeps agent
+        # sessions pointed at whatever build is actually installed.
+        "protocol": {
+            "mcp_name": "dude-mcp",
+            "bin": "Contents/Resources/dude-mcp",
+            "serve_args": ["serve"],
+        },
     },
     "tulkas": {
         "kind": "app",

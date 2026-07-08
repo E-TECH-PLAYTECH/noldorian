@@ -19,8 +19,15 @@ xabra --app dud3runner --install [--yes]    # fetch → Gatekeeper/codesign veri
 xabra --app dud3runner --update             # install only if newer resolves
 xabra --update --all --yes                  # sweep every known app
 xabra --app dud3runner --open
+xabra --app dud3runner --update --protocol  # repoint MCP enrollment at the installed binary
 xabra --doctor                              # gh auth + macOS tool check
 ```
+
+Apps that embed an MCP protocol binary (dud3runner → `dude-mcp`) declare it in
+their spec; `--status` then reports enrollment **drift** (agent sessions running
+a different binary than the installed app), and `--update --protocol` repoints
+`~/.claude.json` at the app's embedded binary — with a backup banked first — so
+every future app update updates the protocol serving agents too.
 
 Add `--json` to anything for a machine-readable receipt. Mutating actions
 always bank a receipt at `~/.local/state/xabra/receipts/` and back up the

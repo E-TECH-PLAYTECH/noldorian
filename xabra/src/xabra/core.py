@@ -192,6 +192,72 @@ def install_cli(spec: dict, tarball: Path, receipt: dict) -> None:
         receipt["installed_path"] = str(target)
 
 
+# ---------------------------------------------------------------- protocol
+
+MCP_CONFIG = Path.home() / ".claude.json"
+
+
+def _bin_version(path: str | Path) -> str | None:
+    if not Path(path).is_file():
+        return None
+    out = sh([str(path), "--version"])
+    return (out.stdout or out.stderr).strip()[:80] or None
+
+
+def protocol_info(spec: dict) -> dict:
+    """Installed protocol binary vs what MCP consumers are enrolled to run."""
+    proto = spec.get("protocol")
+    if not proto:
+        return {}
+    app_bin = APPLICATIONS / spec["app"] / proto["bin"]
+    info: dict = {
+        "mcp_name": proto["mcp_name"],
+        "app_bin": str(app_bin),
+        "app_bin_version": _bin_version(app_bin),
+    }
+    if MCP_CONFIG.is_file():
+        try:
+            entry = json.loads(MCP_CONFIG.read_text()).get("mcpServers", {}).get(proto["mcp_name"])
+        except json.JSONDecodeError:
+            entry = None
+        if entry:
+            info["enrolled_command"] = entry.get("command")
+            info["enrolled_version"] = _bin_version(entry.get("command", ""))
+    info["drift"] = info.get("enrolled_command") != str(app_bin)
+    return info
+
+
+def repoint_protocol(spec: dict, receipt: dict) -> None:
+    """Point the MCP enrollment at the installed app's embedded protocol binary."""
+    proto = spec["protocol"]
+    info = protocol_info(spec)
+    receipt["protocol_before"] = info
+    if info.get("app_bin_version") is None:
+        raise SystemExit(f"xabra: no protocol binary at {info['app_bin']} — install the app first")
+    if not info["drift"]:
+        receipt.update(ok=True, skipped="enrollment already points at the installed app")
+        return
+    if not MCP_CONFIG.is_file():
+        raise SystemExit(f"xabra: {MCP_CONFIG} not found — enroll {proto['mcp_name']} once first")
+    cfg = json.loads(MCP_CONFIG.read_text())
+    servers = cfg.setdefault("mcpServers", {})
+    if proto["mcp_name"] not in servers:
+        raise SystemExit(f"xabra: '{proto['mcp_name']}' not enrolled in {MCP_CONFIG}")
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup = BACKUP_DIR / f"claude.json.{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
+    shutil.copy2(MCP_CONFIG, backup)
+    receipt["backup"] = str(backup)
+    servers[proto["mcp_name"]] = {
+        **servers[proto["mcp_name"]],
+        "command": info["app_bin"],
+        "args": list(proto.get("serve_args", [])),
+    }
+    MCP_CONFIG.write_text(json.dumps(cfg, indent=2) + "\n")
+    receipt["protocol_after"] = protocol_info(spec)
+    receipt["note"] = "new enrollment takes effect when the next agent session spawns the server"
+    receipt["ok"] = True
+
+
 # ---------------------------------------------------------------- receipts
 
 def bank_receipt(receipt: dict) -> Path:
