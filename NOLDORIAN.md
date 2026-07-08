@@ -34,8 +34,17 @@ Planned progression (operator tools, not spells):
 | `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.). 0.2.0: **env-vaults** — 0600 files of `NAME=value` / `NAME__FILE=path` / `NAME__CMD=cmd` pointers, loaded in-process via `keyabra run --env-file` (canonical: `~/.config/keyabra/everplay-release.env`) |
 | `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
 | `xabra` | `xabra` | Everplay app fetcher — `--app <name> --install/--update/--open` for direct-distribution (non-App-Store) apps; Gatekeeper-verified installs, JSON receipts at `~/.local/state/xabra/receipts/` |
+| `xalakazam` | `xalakazam` | **The orienter — callable memory.** `--deploy` / `--spells` print the embedded playbooks for installing + strategically using Noldorian and the snx spellbook on any machine; `--bootstrap` prints the one-liners |
 
 Source lives in `~/Projects/<name>/`, published separately from this repo.
+
+---
+
+## Deploy anywhere
+
+- **Bootstrap (any bash + python3 + git):** `bootstrap.sh` at repo root — auth via `gh` or `GITHUB_TOKEN`, pip user-installs the CLIs, `--all` for every package, `--spells` also clones the spellbook + `snx` shim. Works in cloud containers (Claude Code web): pipe it through curl with a `GITHUB_TOKEN` — see `xalakazam --bootstrap`.
+- **MCP:** `mcp/noldorian_mcp.py` — zero-dependency stdio server (tools: `orient`, `install_noldorian`, `install_spells`, `doctor`); register with `claude mcp add noldorian -- python3 …/mcp/noldorian_mcp.py` and any MCP-capable agent can self-serve the playbooks and installs.
+- **Homebrew (macOS):** this repo doubles as a tap — `brew tap everplay-tech/noldorian https://github.com/Everplay-Tech/noldorian.git && brew install everplay-tech/noldorian/noldorian` (`Formula/noldorian.rb`; scaffold — pip/bootstrap is the proven path). No cask: these are CLIs, not app bundles.
 
 ---
 
