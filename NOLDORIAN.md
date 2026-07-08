@@ -33,6 +33,7 @@ Planned progression (operator tools, not spells):
 | `binabra` | `abra` | Bin-directory anchor — `source "$(abra sh)"` |
 | `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.). 0.2.0: **env-vaults** — 0600 files of `NAME=value` / `NAME__FILE=path` / `NAME__CMD=cmd` pointers, loaded in-process via `keyabra run --env-file` (canonical: `~/.config/keyabra/everplay-release.env`) |
 | `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
+| `xabra` | `xabra` | Everplay app fetcher — `--app <name> --install/--update/--open` for direct-distribution (non-App-Store) apps; Gatekeeper-verified installs, JSON receipts at `~/.local/state/xabra/receipts/` |
 
 Source lives in `~/Projects/<name>/`, published separately from this repo.
 
@@ -43,6 +44,7 @@ Source lives in `~/Projects/<name>/`, published separately from this repo.
 | Spell | Noldorian cousin | Difference |
 |-------|------------------|------------|
 | `secret-run` | `keyabra` | Spell: args on CLI, JSON receipt, agent-facing. Keyabra: interactive getpass, human-facing. |
+| `runner-install` / `macos-install-app` | `xabra` | Spells: this Mac, spellbook receipts, DUD3Runner/dmg-specific. Xabra: portable pip install, family-wide registry, works wherever `gh` is authenticated. |
 | `invoke` / `route` | — | Spells route *within* the registry; Noldorian does not replace them. |
 
 ---
