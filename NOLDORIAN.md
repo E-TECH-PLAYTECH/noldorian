@@ -80,7 +80,8 @@ PyPI.org is a **public index** — `pip install` still works for anyone, but
 > and cast freely — the spell is ephemeral, the RECEIPT is the product — but the
 > **export ritual is mandatory before exit**: ship `~/spells/receipts/` + the new
 > `akashic/events.jsonl` diff home in the PR (`receipts/<branch>/snax/`) and/or POST
-> to the INNERTUBE; the head machine harvests them into the durable ledger on merge.
-> An unexported cast never happened.
+> to the INNERTUBE; the head machine harvests them into the durable ledger on merge
+> (`snx akashic-harvest <export-path> --confirm` — chain-sealed, provenance-tagged,
+> idempotent). An unexported cast never happened.
 
 See also: [lexicon.json](lexicon.json) (`noldorian`), [AGENTS.md](AGENTS.md).
