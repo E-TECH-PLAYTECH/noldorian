@@ -14,9 +14,13 @@
 #
 # Default: keyabra + xalakazam (the secrets tool and the orienter).
 #   --all      also xadabra, binabra, xabra
-#   --spells   also clone the snx spellbook to ~/spells + install the snx shim
-#              (NOT recommended in throwaway cloud containers — the spellbook's
-#              receipts ledger belongs on durable machines)
+#   --spells   also clone the snx spellbook to ~/spells + install the snx shim.
+#              Cloud containers: cast freely — the container grimoire is
+#              ephemeral, so EXPORT receipts before exit (receipts/ is
+#              gitignored → everything in it is yours; new akashic events are
+#              `git -C ~/spells diff -- akashic/events.jsonl`). Ship them in
+#              your PR (receipts/<branch>/snax/) and/or POST to the INNERTUBE.
+#              An unexported cast never happened.
 set -euo pipefail
 
 REPO="Everplay-Tech/noldorian"

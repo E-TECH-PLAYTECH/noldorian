@@ -75,8 +75,12 @@ PyPI.org is a **public index** — `pip install` still works for anyone, but
 
 ## Agent covenant (one line)
 
-> Cast `snx <spell>` on the **MacBook Pro (head)** only. **Air** lenses the mini;
-> **mini** runs powerhouse jobs. Cloud: read spellbook for reference; **xadabra --cloud**
-> with plain shell — blocks `snx`.
+> Cast `snx <spell>` on the **MacBook Pro (head)** freely. **Air** lenses the mini;
+> **mini** runs powerhouse jobs. **Cloud** (revised 2026-07-09): bootstrap `--spells`
+> and cast freely — the spell is ephemeral, the RECEIPT is the product — but the
+> **export ritual is mandatory before exit**: ship `~/spells/receipts/` + the new
+> `akashic/events.jsonl` diff home in the PR (`receipts/<branch>/snax/`) and/or POST
+> to the INNERTUBE; the head machine harvests them into the durable ledger on merge.
+> An unexported cast never happened.
 
 See also: [lexicon.json](lexicon.json) (`noldorian`), [AGENTS.md](AGENTS.md).
