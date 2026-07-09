@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 ENV_DIR = Path.home() / ".config" / "keyabra"
 
@@ -77,7 +77,22 @@ def prompt_secret(
     confirm: bool = False,
     min_len: int = 1,
 ) -> str:
-    """Read a secret from the terminal (hidden input). Never logged or stored."""
+    """Read a secret from the terminal (hidden input). Never logged or stored.
+
+    Without a TTY (CI, agent-harness shells), getpass either echoes the secret
+    or dies in termios/EOFError mid-prompt. Accept one piped line on stdin in
+    that case; otherwise refuse with instructions instead of a stack trace.
+    """
+    if not sys.stdin.isatty():
+        value = sys.stdin.readline().rstrip("\n")
+        if len(value) >= min_len:
+            return value
+        print(
+            f"keyabra: no TTY and nothing piped on stdin for {label} — "
+            "run in a real terminal, pipe the secret in, or use --env-file",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
     while True:
         value = getpass.getpass(f"{label}: ")
         if len(value) < min_len:
