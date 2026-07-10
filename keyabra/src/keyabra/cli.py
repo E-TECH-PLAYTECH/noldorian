@@ -172,6 +172,88 @@ def _cmd_env(argv: list[str]) -> int:
     return 1
 
 
+def _cmd_copy(argv: list[str]) -> int:
+    """Vault -> system clipboard. The value is never displayed, never on argv,
+    and auto-clears after --ttl seconds (only if the clipboard still holds it —
+    a newer copy is never clobbered)."""
+    name = argv[0] if argv and not argv[0].startswith("--") else None
+    if not name:
+        print(
+            "usage: keyabra copy NAME [--file PATH] [--ttl SECONDS]\n"
+            "  copies the vault entry to the clipboard without displaying it;\n"
+            "  auto-clears after TTL (default 45s; --ttl 0 disables)",
+            file=sys.stderr,
+        )
+        return 1
+
+    vault = ENV_DIR / "keyabra.env"
+    ttl = 45
+    rest = argv[1:]
+    i = 0
+    while i < len(rest):
+        if rest[i] == "--file" and i + 1 < len(rest):
+            vault = Path(rest[i + 1]).expanduser()
+            i += 2
+        elif rest[i] == "--ttl" and i + 1 < len(rest):
+            try:
+                ttl = max(0, int(rest[i + 1]))
+            except ValueError:
+                print(f"keyabra: --ttl wants an integer, got {rest[i+1]!r}", file=sys.stderr)
+                return 1
+            i += 2
+        else:
+            print(f"keyabra: unexpected arg '{rest[i]}'", file=sys.stderr)
+            return 1
+
+    try:
+        secrets = load_env_file(vault)
+    except Exception as exc:
+        print(f"keyabra: {exc}", file=sys.stderr)
+        return 1
+    if name not in secrets:
+        print(f"keyabra: no '{name}' in {vault} (keyabra env list shows names)", file=sys.stderr)
+        return 1
+    value = secrets[name]
+
+    if shutil.which("pbcopy"):
+        copy_cmd, paste_cmd = ["pbcopy"], ["pbpaste"]
+    elif shutil.which("wl-copy"):
+        copy_cmd, paste_cmd = ["wl-copy"], ["wl-paste", "-n"]
+    elif shutil.which("xclip"):
+        copy_cmd = ["xclip", "-selection", "clipboard"]
+        paste_cmd = ["xclip", "-selection", "clipboard", "-o"]
+    else:
+        print("keyabra: no clipboard tool (pbcopy/wl-copy/xclip)", file=sys.stderr)
+        return 1
+
+    subprocess.run(copy_cmd, input=value.encode(), check=True)
+    ttl_note = f"; clears in {ttl}s if untouched" if ttl else "; auto-clear disabled"
+    print(f"keyabra: {name} on clipboard ({len(value)} chars{ttl_note})")
+
+    if ttl:
+        # Detached watcher: gets the value on stdin (never argv), sleeps, and
+        # clears the clipboard only if it still holds this exact value.
+        watcher = (
+            "import subprocess,sys,time\n"
+            "v=sys.stdin.buffer.read()\n"
+            f"time.sleep({ttl})\n"
+            f"cur=subprocess.run({paste_cmd!r},capture_output=True).stdout\n"
+            "if cur==v:\n"
+            f"    subprocess.run({copy_cmd!r},input=b'')\n"
+        )
+        p = subprocess.Popen(
+            [sys.executable, "-c", watcher],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        assert p.stdin is not None
+        p.stdin.write(value.encode())
+        p.stdin.close()
+    return 0
+
+
 def _cmd_pypi(argv: list[str]) -> int:
     sub = argv[0] if argv else "upload"
 
@@ -283,6 +365,7 @@ def main(argv: list[str] | None = None) -> int:
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
   keyabra run --env-file P -- cmd    load a 0600 env-vault → run command
   keyabra env init|set|set-file|list manage the vault (~/.config/keyabra/)
+  keyabra copy NAME [--ttl S]        vault -> clipboard, never displayed; auto-clears
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
@@ -308,6 +391,9 @@ Examples:
 
     if argv[0] == "env":
         return _cmd_env(argv[1:])
+
+    if argv[0] == "copy":
+        return _cmd_copy(argv[1:])
 
     if argv[0] == "pypi":
         return _cmd_pypi(argv[1:])
