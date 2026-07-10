@@ -172,6 +172,38 @@ def _cmd_env(argv: list[str]) -> int:
     return 1
 
 
+def _concealed_copy_macos(value: str) -> bool:
+    """Write the clipboard with org.nspasteboard.ConcealedType alongside plain
+    text, so clipboard-history managers that honor the nspasteboard.org
+    convention skip the entry. The secret travels via stdin — never argv.
+    Returns False (caller falls back to pbcopy) if the NSPasteboard path fails.
+
+    Honest limits: ConcealedType is a convention, not protection — a hostile
+    pasteboard reader ignores it, and Universal Clipboard/Handoff can still
+    sync the copy to other devices on the same iCloud account. The TTL
+    auto-clear remains the control that actually holds.
+    """
+    jxa = (
+        'ObjC.import("AppKit");'
+        "const d=$.NSFileHandle.fileHandleWithStandardInput.readDataToEndOfFile;"
+        "const s=$.NSString.alloc.initWithDataEncoding(d,$.NSUTF8StringEncoding);"
+        "const pb=$.NSPasteboard.generalPasteboard;"
+        "pb.clearContents;"
+        'pb.setStringForType(s,"org.nspasteboard.ConcealedType");'
+        "pb.setStringForType(s,$.NSPasteboardTypeString);"
+    )
+    try:
+        r = subprocess.run(
+            ["osascript", "-l", "JavaScript", "-e", jxa],
+            input=value.encode(),
+            capture_output=True,
+            timeout=10,
+        )
+        return r.returncode == 0
+    except Exception:
+        return False
+
+
 def _cmd_copy(argv: list[str]) -> int:
     """Vault -> system clipboard. The value is never displayed, never on argv,
     and auto-clears after --ttl seconds (only if the clipboard still holds it —
@@ -226,9 +258,14 @@ def _cmd_copy(argv: list[str]) -> int:
         print("keyabra: no clipboard tool (pbcopy/wl-copy/xclip)", file=sys.stderr)
         return 1
 
-    subprocess.run(copy_cmd, input=value.encode(), check=True)
+    concealed = False
+    if copy_cmd == ["pbcopy"]:
+        concealed = _concealed_copy_macos(value)
+    if not concealed:
+        subprocess.run(copy_cmd, input=value.encode(), check=True)
     ttl_note = f"; clears in {ttl}s if untouched" if ttl else "; auto-clear disabled"
-    print(f"keyabra: {name} on clipboard ({len(value)} chars{ttl_note})")
+    concealed_note = ", concealed" if concealed else ""
+    print(f"keyabra: {name} on clipboard ({len(value)} chars{concealed_note}{ttl_note})")
 
     if ttl:
         # Detached watcher: gets the value on stdin (never argv), sleeps, and
@@ -365,7 +402,11 @@ def main(argv: list[str] | None = None) -> int:
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
   keyabra run --env-file P -- cmd    load a 0600 env-vault → run command
   keyabra env init|set|set-file|list manage the vault (~/.config/keyabra/)
-  keyabra copy NAME [--ttl S]        vault -> clipboard, never displayed; auto-clears
+  keyabra copy NAME [--ttl S]        vault -> clipboard, never displayed; auto-clears.
+                                     macOS: marked ConcealedType (history managers skip
+                                     it) — but Handoff/Universal Clipboard can still
+                                     sync it to your other devices; the TTL is the
+                                     control that holds
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
