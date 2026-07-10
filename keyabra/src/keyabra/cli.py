@@ -211,19 +211,25 @@ def _cmd_copy(argv: list[str]) -> int:
     name = argv[0] if argv and not argv[0].startswith("--") else None
     if not name:
         print(
-            "usage: keyabra copy NAME [--file PATH] [--ttl SECONDS]\n"
+            "usage: keyabra copy NAME [--file PATH] [--ttl SECONDS] [--env-line]\n"
             "  copies the vault entry to the clipboard without displaying it;\n"
-            "  auto-clears after TTL (default 45s; --ttl 0 disables)",
+            "  auto-clears after TTL (default 45s; --ttl 0 disables).\n"
+            "  --env-line copies 'NAME=value' (for .env-format fields, e.g.\n"
+            "  the claude.ai environment-variables box)",
             file=sys.stderr,
         )
         return 1
 
     vault = ENV_DIR / "keyabra.env"
     ttl = 45
+    env_line = False
     rest = argv[1:]
     i = 0
     while i < len(rest):
-        if rest[i] == "--file" and i + 1 < len(rest):
+        if rest[i] == "--env-line":
+            env_line = True
+            i += 1
+        elif rest[i] == "--file" and i + 1 < len(rest):
             vault = Path(rest[i + 1]).expanduser()
             i += 2
         elif rest[i] == "--ttl" and i + 1 < len(rest):
@@ -246,6 +252,8 @@ def _cmd_copy(argv: list[str]) -> int:
         print(f"keyabra: no '{name}' in {vault} (keyabra env list shows names)", file=sys.stderr)
         return 1
     value = secrets[name]
+    if env_line:
+        value = f"{name}={value}"
 
     if shutil.which("pbcopy"):
         copy_cmd, paste_cmd = ["pbcopy"], ["pbpaste"]
@@ -265,7 +273,8 @@ def _cmd_copy(argv: list[str]) -> int:
         subprocess.run(copy_cmd, input=value.encode(), check=True)
     ttl_note = f"; clears in {ttl}s if untouched" if ttl else "; auto-clear disabled"
     concealed_note = ", concealed" if concealed else ""
-    print(f"keyabra: {name} on clipboard ({len(value)} chars{concealed_note}{ttl_note})")
+    line_note = " as NAME=value line" if env_line else ""
+    print(f"keyabra: {name} on clipboard{line_note} ({len(value)} chars{concealed_note}{ttl_note})")
 
     if ttl:
         # Detached watcher: gets the value on stdin (never argv), sleeps, and

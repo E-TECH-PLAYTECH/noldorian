@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xalakazam"
-version = "0.1.1"
+version = "0.1.2"
 description = "The Everplay orienter — callable memory for deploying and strategically using Noldorian and the snx spellbook"
 readme = "README.md"
 requires-python = ">=3.8"
