@@ -1,8 +1,36 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
 import sys
 
 from xalakazam import BOOTSTRAP_HINT, DEPLOY, SPELLS, __version__
+
+# The claude.ai/code environment "setup script": runs at container start,
+# before the agent wakes, consuming the NOLDORIAN_TOKEN env var so the ability
+# layer (Noldorian CLIs + snx spellbook) is pre-installed. An env var alone
+# does nothing by itself — this is what eats it. Paste into the environment
+# configuration's setup-script field for ANY repo (it is repo-agnostic; only
+# the env var is per-repo). `|| true` keeps a transient GitHub outage from
+# bricking the container — the agent falls back to CLOUD_ABILITIES.md's
+# manual block.
+SETUP_SCRIPT = """if [ -n "$NOLDORIAN_TOKEN" ]; then
+  curl -fsSL -H "Authorization: Bearer $NOLDORIAN_TOKEN" \\
+    -H "Accept: application/vnd.github.raw" \\
+    https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh \\
+    | GITHUB_TOKEN="$NOLDORIAN_TOKEN" bash -s -- --all --spells || true
+fi"""
+
+
+def _clipboard_copy(text: str) -> bool:
+    for cmd in (["pbcopy"], ["wl-copy"], ["xclip", "-selection", "clipboard"]):
+        if shutil.which(cmd[0]):
+            try:
+                subprocess.run(cmd, input=text.encode(), check=True)
+                return True
+            except Exception:
+                return False
+    return False
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -15,6 +43,8 @@ def main(argv: list[str] | None = None) -> int:
   xalakazam --deploy      how to install + strategically use Noldorian
   xalakazam --spells      how to install + strategically use the snx spellbook
   xalakazam --bootstrap   copy-paste install one-liners (gh / GITHUB_TOKEN)
+  xalakazam --setup-script  print + clipboard-copy the claude.ai environment
+                          setup script (consumes NOLDORIAN_TOKEN at boot)
   xalakazam --all         both playbooks
 
 Say the word, know the world."""
@@ -35,6 +65,14 @@ Say the word, know the world."""
 
     if argv[0] == "--bootstrap":
         print(BOOTSTRAP_HINT)
+        return 0
+
+    if argv[0] == "--setup-script":
+        print(SETUP_SCRIPT)
+        if _clipboard_copy(SETUP_SCRIPT):
+            print("\nxalakazam: setup script copied to clipboard — paste into the claude.ai/code environment configuration's setup-script field (env var NOLDORIAN_TOKEN must also be set there)", file=sys.stderr)
+        else:
+            print("\nxalakazam: no clipboard tool found — copy the block above by hand", file=sys.stderr)
         return 0
 
     if argv[0] == "--all":
