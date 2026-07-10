@@ -14,11 +14,8 @@ from xalakazam import BOOTSTRAP_HINT, DEPLOY, SPELLS, __version__
 # the env var is per-repo). `|| true` keeps a transient GitHub outage from
 # bricking the container — the agent falls back to CLOUD_ABILITIES.md's
 # manual block.
-SETUP_SCRIPT = """if [ -n "$NOLDORIAN_TOKEN" ]; then
-  curl -fsSL -H "Authorization: Bearer $NOLDORIAN_TOKEN" \\
-    -H "Accept: application/vnd.github.raw" \\
-    https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh \\
-    | GITHUB_TOKEN="$NOLDORIAN_TOKEN" bash -s -- --all --spells || true
+SETUP_SCRIPT = """if [ -f .claude/noldorian-bootstrap.sh ] && [ -n "$NOLDORIAN_TOKEN" ]; then
+  GITHUB_TOKEN="$NOLDORIAN_TOKEN" bash .claude/noldorian-bootstrap.sh --all --spells || true
 fi"""
 
 

@@ -9,7 +9,7 @@ package is pip-installed, no repo checkout required.
 
 from __future__ import annotations
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
 
 DEPLOY = """\
 # XALAKAZAM --deploy — Noldorian: what it is, how to install it, how to use it
