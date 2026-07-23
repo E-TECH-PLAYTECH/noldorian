@@ -140,6 +140,32 @@ def _mounted_app(mount: Path) -> Path:
     return apps[0]
 
 
+def _app_running_pids(app_stem: str) -> list:
+    """PIDs of a running app by its executable path (any bundle location)."""
+    r = sh(["pgrep", "-f", f"{app_stem}.app/Contents/MacOS/"])
+    return [p for p in r.stdout.split() if p.strip()]
+
+
+def _quit_app_and_wait(app_stem: str) -> dict:
+    """Quit a running app and VERIFY it exited before we replace its bundle.
+
+    The old flow fired `osascript quit` without checking the result and slept a
+    blind 1s — if the quit didn't land, the install renamed the bundle out from
+    under a still-running process, which kept running as an orphan (additive
+    stacking). Ask nicely, poll for exit, then SIGKILL any survivor."""
+    if not _app_running_pids(app_stem):
+        return {"was_running": False}
+    sh(["osascript", "-e", f'tell application "{app_stem}" to quit'])
+    for _ in range(30):  # up to ~15s
+        if not _app_running_pids(app_stem):
+            return {"was_running": True, "quit": "graceful"}
+        time.sleep(0.5)
+    sh(["pkill", "-9", "-f", f"{app_stem}.app/Contents/MacOS/"])
+    time.sleep(0.5)
+    return {"was_running": True,
+            "quit": "forced" if not _app_running_pids(app_stem) else "still-running"}
+
+
 def install_dmg_app(spec: dict, dmg: Path, receipt: dict) -> None:
     mount = Path(tempfile.mkdtemp(prefix="xabra-mnt-"))
     out = sh(["hdiutil", "attach", str(dmg), "-nobrowse", "-readonly",
@@ -157,8 +183,10 @@ def install_dmg_app(spec: dict, dmg: Path, receipt: dict) -> None:
             raise SystemExit(f"xabra: codesign verify failed: {csign.stderr.strip()}")
 
         target = APPLICATIONS / spec["app"]
-        sh(["osascript", "-e", f'tell application "{spec["app"].removesuffix(".app")}" to quit'])
-        time.sleep(1)
+        app_stem = spec["app"].removesuffix(".app")
+        # Quit-and-VERIFY before replacing the bundle, so we never orphan a running
+        # instance behind a stale bundle (the additive-stacking bug).
+        receipt["quit"] = _quit_app_and_wait(app_stem)
         if target.exists():
             BACKUP_DIR.mkdir(parents=True, exist_ok=True)
             backup = BACKUP_DIR / f"{spec['app']}.{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
@@ -169,6 +197,12 @@ def install_dmg_app(spec: dict, dmg: Path, receipt: dict) -> None:
         if copy.returncode != 0:
             raise SystemExit(f"xabra: ditto install failed: {copy.stderr.strip()}")
         receipt["installed_path"] = str(target)
+        # Relaunch ONLY if it was running before — replace-in-place, don't surprise
+        # the user by launching an app they had closed. The app's own single-instance
+        # guard displaces any straggler.
+        if receipt["quit"].get("was_running"):
+            sh(["open", str(target)])
+            receipt["relaunched"] = True
     finally:
         sh(["hdiutil", "detach", str(mount), "-quiet"])
 
