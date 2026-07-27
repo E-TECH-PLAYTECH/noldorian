@@ -6,10 +6,10 @@
 # Auth: an authenticated `gh` CLI, or GITHUB_TOKEN/GH_TOKEN in the env.
 #
 #   with gh:            bash <(gh api -H "Accept: application/vnd.github.raw" \
-#                         repos/Everplay-Tech/noldorian/contents/bootstrap.sh) [--all] [--spells]
+#                         repos/E-TECH-PLAYTECH/noldorian/contents/bootstrap.sh) [--all] [--spells]
 #   with a token only:  curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
 #                         -H "Accept: application/vnd.github.raw" \
-#                         https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh \
+#                         https://api.github.com/repos/E-TECH-PLAYTECH/noldorian/contents/bootstrap.sh \
 #                         | bash -s -- --all
 #
 # Default: keyabra + xalakazam (the secrets tool and the orienter).
@@ -23,8 +23,8 @@
 #              An unexported cast never happened.
 set -euo pipefail
 
-REPO="Everplay-Tech/noldorian"
-SPELLS_REPO="Everplay-Tech/spells"
+REPO="E-TECH-PLAYTECH/noldorian"
+SPELLS_REPO="E-TECH-PLAYTECH/spells"
 PKGS=(keyabra xalakazam)
 WANT_SPELLS=0
 for a in "$@"; do
