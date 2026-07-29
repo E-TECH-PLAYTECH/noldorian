@@ -1,0 +1,11 @@
+name: Zero-paid-macOS policy canary
+
+on:
+  pull_request:
+
+jobs:
+  forbidden-route:
+    if: false
+    runs-on: macos-latest
+    steps:
+      - run: echo "This job must never allocate a runner."
