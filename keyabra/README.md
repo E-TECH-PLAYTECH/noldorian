@@ -54,6 +54,27 @@ keyabra run --env GITHUB_TOKEN -- gh auth status
 keyabra run --env TWINE_PASSWORD --env TWINE_USERNAME -- twine upload dist/*
 ```
 
+## Discord bot token → Google Secret Manager
+
+Use this operator rite after Discord reveals a newly reset token:
+
+```bash
+keyabra discord gcp-store \
+  --application-id 1532476149249216542 \
+  --guild-id 1532387746604384306 \
+  --project everplay-centaur-chess \
+  --secret everplay-discord-agent-relay-token
+```
+
+The token is entered at a hidden prompt. Keyabra first verifies the bot identity
+and intended guild against Discord. Only then does it send the token to
+`gcloud secrets versions add` over stdin, read the latest version back, and
+repeat the live Discord verification. The receipt contains identity, guild,
+project, secret, and version metadata—never the token.
+
+Do not scrape a token from portal DOM text. The operator should copy the value
+shown by Discord and paste it directly into Keyabra's hidden prompt.
+
 ## Publish keyabra itself
 
 First upload needs an account-scoped PyPI token: https://pypi.org/manage/account/token/
@@ -70,3 +91,4 @@ keyabra pypi publish --skip-build   # after build, uses prompted token
 - Uses `getpass` — token is not echoed
 - Token lives only in process memory for the subprocess
 - Never written to files or shell history
+- Provider-generated tokens are live-validated before and after durable storage

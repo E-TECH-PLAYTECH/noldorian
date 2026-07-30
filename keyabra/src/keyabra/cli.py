@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -13,6 +14,11 @@ from keyabra import (
     load_env_file,
     prompt_secret,
     run_with_env,
+)
+from keyabra.discord_gcp import (
+    DiscordTokenError,
+    SecretStoreError,
+    store_discord_token_in_gcp,
 )
 
 
@@ -398,6 +404,59 @@ def _cmd_pypi(argv: list[str]) -> int:
     return 1
 
 
+def _cmd_discord(argv: list[str]) -> int:
+    sub = argv[0] if argv else ""
+    if sub != "gcp-store":
+        print(
+            "usage: keyabra discord gcp-store --project PROJECT --secret NAME "
+            "--guild-id ID [--application-id ID]",
+            file=sys.stderr,
+        )
+        return 1
+
+    values: dict[str, str] = {}
+    args = argv[1:]
+    allowed = {"--project", "--secret", "--guild-id", "--application-id"}
+    i = 0
+    while i < len(args):
+        if args[i] not in allowed or i + 1 >= len(args):
+            print(
+                f"keyabra: unexpected or incomplete argument '{args[i]}'",
+                file=sys.stderr,
+            )
+            return 1
+        values[args[i][2:].replace("-", "_")] = args[i + 1]
+        i += 2
+
+    missing = [
+        name for name in ("project", "secret", "guild_id") if not values.get(name)
+    ]
+    if missing:
+        print(
+            "keyabra: missing required option(s): "
+            + ", ".join(f"--{name.replace('_', '-')}" for name in missing),
+            file=sys.stderr,
+        )
+        return 1
+
+    token = prompt_secret("Discord bot token", min_len=30)
+    try:
+        receipt = store_discord_token_in_gcp(
+            token,
+            project=values["project"],
+            secret=values["secret"],
+            guild_id=values["guild_id"],
+            application_id=values.get("application_id"),
+        )
+    except (DiscordTokenError, SecretStoreError) as exc:
+        print(f"keyabra: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        token = ""
+    print(json.dumps(receipt, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
@@ -416,6 +475,8 @@ def main(argv: list[str] | None = None) -> int:
                                      it) — but Handoff/Universal Clipboard can still
                                      sync it to your other devices; the TTL is the
                                      control that holds
+  keyabra discord gcp-store ...      hidden prompt → Discord preflight → GCP Secret
+                                     Manager via stdin → readback + Discord postflight
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
@@ -447,6 +508,9 @@ Examples:
 
     if argv[0] == "pypi":
         return _cmd_pypi(argv[1:])
+
+    if argv[0] == "discord":
+        return _cmd_discord(argv[1:])
 
     print(f"keyabra: unknown command '{argv[0]}' (try: keyabra help)", file=sys.stderr)
     return 1
