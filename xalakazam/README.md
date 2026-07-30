@@ -9,6 +9,12 @@ machine — docs are embedded in the package, no checkout needed.
 pip install "git+https://github.com/Everplay-Tech/noldorian.git#subdirectory=xalakazam"
 xalakazam --deploy
 xalakazam --spells
+xalakazam --cursor-sdk-enable
 ```
+
+`--cursor-sdk-enable` opens Cursor's User API Key page, then hands the copied
+key directly to Keyabra's hidden prompt. Keyabra validates the key, stores it
+in Google Secret Manager over stdin, reads it back, and validates it again.
+Neither tool prints or persists the credential outside the designated secret.
 
 Proprietary — © 2026 Everplay-Tech LLC.

@@ -39,6 +39,7 @@ def _clipboard_copy(text: str) -> bool:
 # select it when starting a session. Env vars are ONE .env-format text box
 # (KEY=value lines); the setup script is its own field.
 ENV_CONFIG_URL = "https://claude.ai/code"
+CURSOR_API_KEY_URL = "https://cursor.com/dashboard/cloud-agents"
 CLICK_PATH = (
     "click path: cloud icon (environment selector) -> hover the environment -> settings icon\n"
     "            (or 'Add environment'; environments are WORKSPACE-scoped — one serves every repo)"
@@ -123,6 +124,62 @@ def _cmd_enable(argv: list[str]) -> int:
     return 0
 
 
+def _cmd_cursor_sdk_enable(argv: list[str]) -> int:
+    """Open Cursor's key surface, then hand secure intake to Keyabra."""
+    project = "everplay-centaur-chess"
+    secret = "everplay-cursor-sdk-api-key"
+    url = CURSOR_API_KEY_URL
+    no_open = False
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--project" and i + 1 < len(argv):
+            project = argv[i + 1]
+            i += 2
+        elif argv[i] == "--secret" and i + 1 < len(argv):
+            secret = argv[i + 1]
+            i += 2
+        elif argv[i] == "--url" and i + 1 < len(argv):
+            url = argv[i + 1]
+            i += 2
+        elif argv[i] == "--no-open":
+            no_open = True
+            i += 1
+        else:
+            print(f"xalakazam: unexpected arg '{argv[i]}'", file=sys.stderr)
+            return 1
+
+    keyabra = shutil.which("keyabra")
+    if not keyabra:
+        print("xalakazam: keyabra not on PATH — install it, then rerun", file=sys.stderr)
+        return 1
+
+    print("xalakazam: opening Cursor Cloud Agents → User API Keys.")
+    print(f"Create a USER API key (not Admin and not a Models/BYOK key):\n  {url}")
+    if not no_open:
+        _open_url(url)
+    _wait(
+        "Create the key and copy it. Do not paste it into chat or a shell. "
+        "Press Enter when it is on your clipboard… "
+    )
+
+    print(
+        "Handing the credential directly to Keyabra's hidden prompt for live "
+        "Cursor validation and GCP storage."
+    )
+    return subprocess.run(
+        [
+            keyabra,
+            "cursor",
+            "gcp-store",
+            "--project",
+            project,
+            "--secret",
+            secret,
+        ],
+        check=False,
+    ).returncode
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
@@ -139,6 +196,9 @@ def main(argv: list[str] | None = None) -> int:
                           per step ([--url U] [--vault P] [--no-open])
   xalakazam --setup-script  print + clipboard-copy the claude.ai environment
                           setup script (consumes NOLDORIAN_TOKEN at boot)
+  xalakazam --cursor-sdk-enable  open Cursor User API Keys → Keyabra hidden
+                          prompt → live validation → GCP Secret Manager
+                          ([--project P] [--secret S] [--no-open])
   xalakazam --all         both playbooks
 
 Say the word, know the world."""
@@ -163,6 +223,9 @@ Say the word, know the world."""
 
     if argv[0] == "--enable":
         return _cmd_enable(argv[1:])
+
+    if argv[0] == "--cursor-sdk-enable":
+        return _cmd_cursor_sdk_enable(argv[1:])
 
     if argv[0] == "--setup-script":
         print(SETUP_SCRIPT)

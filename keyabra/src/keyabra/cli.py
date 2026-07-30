@@ -20,6 +20,11 @@ from keyabra.discord_gcp import (
     SecretStoreError,
     store_discord_token_in_gcp,
 )
+from keyabra.cursor_gcp import (
+    CursorApiKeyError,
+    SecretStoreError as CursorSecretStoreError,
+    store_cursor_api_key_in_gcp,
+)
 
 
 def _require(cmd: str) -> str:
@@ -457,6 +462,54 @@ def _cmd_discord(argv: list[str]) -> int:
     return 0
 
 
+def _cmd_cursor(argv: list[str]) -> int:
+    sub = argv[0] if argv else ""
+    if sub != "gcp-store":
+        print(
+            "usage: keyabra cursor gcp-store --project PROJECT --secret NAME",
+            file=sys.stderr,
+        )
+        return 1
+
+    values: dict[str, str] = {}
+    args = argv[1:]
+    allowed = {"--project", "--secret"}
+    i = 0
+    while i < len(args):
+        if args[i] not in allowed or i + 1 >= len(args):
+            print(
+                f"keyabra: unexpected or incomplete argument '{args[i]}'",
+                file=sys.stderr,
+            )
+            return 1
+        values[args[i][2:].replace("-", "_")] = args[i + 1]
+        i += 2
+
+    missing = [name for name in ("project", "secret") if not values.get(name)]
+    if missing:
+        print(
+            "keyabra: missing required option(s): "
+            + ", ".join(f"--{name}" for name in missing),
+            file=sys.stderr,
+        )
+        return 1
+
+    api_key = prompt_secret("Cursor User API key", min_len=20)
+    try:
+        receipt = store_cursor_api_key_in_gcp(
+            api_key,
+            project=values["project"],
+            secret=values["secret"],
+        )
+    except (CursorApiKeyError, CursorSecretStoreError) as exc:
+        print(f"keyabra: {exc}", file=sys.stderr)
+        return 1
+    finally:
+        api_key = ""
+    print(json.dumps(receipt, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
@@ -477,6 +530,8 @@ def main(argv: list[str] | None = None) -> int:
                                      control that holds
   keyabra discord gcp-store ...      hidden prompt → Discord preflight → GCP Secret
                                      Manager via stdin → readback + Discord postflight
+  keyabra cursor gcp-store ...       hidden prompt → Cursor /v0/me preflight → GCP
+                                     Secret Manager via stdin → readback + postflight
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
@@ -511,6 +566,9 @@ Examples:
 
     if argv[0] == "discord":
         return _cmd_discord(argv[1:])
+
+    if argv[0] == "cursor":
+        return _cmd_cursor(argv[1:])
 
     print(f"keyabra: unknown command '{argv[0]}' (try: keyabra help)", file=sys.stderr)
     return 1
