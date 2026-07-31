@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import subprocess
 import unittest
+from contextlib import redirect_stdout
 from unittest.mock import patch
 
 from xalakazam.cli import _cmd_cursor_sdk_enable
@@ -19,9 +21,13 @@ class CursorSdkEnableTests(unittest.TestCase):
     ) -> None:
         run.return_value = subprocess.CompletedProcess([], 0)
 
-        result = _cmd_cursor_sdk_enable(["--no-open"])
+        output = io.StringIO()
+        with redirect_stdout(output):
+            result = _cmd_cursor_sdk_enable(["--no-open"])
 
         self.assertEqual(result, 0)
+        self.assertIn("Internal evaluation only", output.getvalue())
+        self.assertIn("does not install, license, or grant", output.getvalue())
         run.assert_called_once_with(
             [
                 "/usr/local/bin/keyabra",

@@ -155,6 +155,11 @@ def _cmd_cursor_sdk_enable(argv: list[str]) -> int:
 
     print("xalakazam: opening Cursor Cloud Agents → User API Keys.")
     print(f"Create a USER API key (not Admin and not a Models/BYOK key):\n  {url}")
+    print(
+        "Internal evaluation only: this rite stores a credential; it does not "
+        "install, license, or grant redistribution/production rights for the "
+        "Cursor SDK."
+    )
     if not no_open:
         _open_url(url)
     _wait(
@@ -198,6 +203,7 @@ def main(argv: list[str] | None = None) -> int:
                           setup script (consumes NOLDORIAN_TOKEN at boot)
   xalakazam --cursor-sdk-enable  open Cursor User API Keys → Keyabra hidden
                           prompt → live validation → GCP Secret Manager
+                          (internal evaluation only; does not install/license SDK)
                           ([--project P] [--secret S] [--no-open])
   xalakazam --all         both playbooks
 

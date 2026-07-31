@@ -25,6 +25,12 @@ the vault over stdin or an in-process channel, read it back, and validate it
 again before reporting success. Receipts contain identities and resource
 pointers only—never credential material.
 
+Credential enrollment does not create software rights. A provider SDK with an
+evaluation, beta, proprietary, or otherwise restricted license stays
+internal-evaluation-only until the applicable production and redistribution
+rights plus dependency review are recorded. Keyabra may bank the credential;
+that is not authorization to bundle the SDK into a customer product.
+
 ---
 
 ## Naming
