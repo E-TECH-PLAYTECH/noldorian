@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "keyabra"
-version = "0.2.4"
+version = "0.2.6"
 description = "Securely prompt for API tokens and run CLI commands — no notepad copy-paste dance"
 readme = "README.md"
 requires-python = ">=3.8"

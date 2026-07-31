@@ -18,6 +18,19 @@ anchors: human-in-the-loop glue that agents should not pretend to be spells.
 Do **not** register Noldorian packages in `snx discovery`. Agents: cast `snx` for spells;
 `pip install` Noldorian when the covenant or task calls for portable CLI libs.
 
+For provider-generated credentials, the operator ceremony belongs in
+**Keyabra**, not in browser DOM extraction or a non-interactive spell. A rite
+must validate the credential against the provider before storage, pass it to
+the vault over stdin or an in-process channel, read it back, and validate it
+again before reporting success. Receipts contain identities and resource
+pointers only—never credential material.
+
+Credential enrollment does not create software rights. A provider SDK with an
+evaluation, beta, proprietary, or otherwise restricted license stays
+internal-evaluation-only until the applicable production and redistribution
+rights plus dependency review are recorded. Keyabra may bank the credential;
+that is not authorization to bundle the SDK into a customer product.
+
 ---
 
 ## Naming
