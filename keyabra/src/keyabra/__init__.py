@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "0.2.6"
+__version__ = "0.2.7"
 
 ENV_DIR = Path.home() / ".config" / "keyabra"
 
@@ -57,18 +57,61 @@ def load_env_file(path: Path | str) -> dict[str, str]:
         if name.endswith("__FILE"):
             target = Path(value).expanduser()
             if not target.is_file():
-                raise FileNotFoundError(f"{p}:{lineno}: {name} -> missing file {target}")
+                raise FileNotFoundError(
+                    f"{p}:{lineno}: {name} -> missing file {target}"
+                )
             out[name[: -len("__FILE")]] = target.read_text()
         elif name.endswith("__CMD"):
             r = subprocess.run(
-                value, shell=True, capture_output=True, text=True, timeout=60
+                value,
+                shell=True,
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
             )
             if r.returncode != 0:
-                raise RuntimeError(f"{p}:{lineno}: {name} command failed: {r.stderr.strip()[:200]}")
+                raise RuntimeError(
+                    f"{p}:{lineno}: {name} command failed with exit {r.returncode}"
+                )
             out[name[: -len("__CMD")]] = r.stdout.strip()
         else:
             out[name] = value
     return out
+
+
+def probe_env_file(path: Path | str, var_name: str) -> dict[str, object]:
+    """Validate one logical vault entry without returning its secret value.
+
+    The probe deliberately uses :func:`load_env_file`, so direct values,
+    ``__FILE`` pointers, ``__CMD`` providers, vault permissions, and parse
+    failures follow the same fail-closed path as ``keyabra run``. The returned
+    receipt contains only identity and validation metadata.
+    """
+    if not var_name or not var_name.strip():
+        raise ValueError("secret variable name must not be empty")
+
+    vault = Path(path).expanduser()
+    resolved: dict[str, str] = {}
+    try:
+        resolved = load_env_file(vault)
+        if var_name not in resolved:
+            raise KeyError(f"secret variable {var_name!r} is not present")
+        if not resolved[var_name]:
+            raise ValueError(f"secret variable {var_name!r} resolves to an empty value")
+
+        mode = vault.stat().st_mode & 0o777
+        return {
+            "schema": "keyabra.env-probe/v1",
+            "vault": str(vault.resolve()),
+            "name": var_name,
+            "present": True,
+            "non_empty": True,
+            "mode": oct(mode),
+        }
+    finally:
+        for name in resolved:
+            resolved[name] = ""
 
 
 def prompt_secret(

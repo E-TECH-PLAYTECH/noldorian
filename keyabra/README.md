@@ -112,3 +112,20 @@ keyabra pypi publish --skip-build   # after build, uses prompted token
 - Token lives only in process memory for the subprocess
 - Never written to files or shell history
 - Provider-generated tokens are live-validated before and after durable storage
+
+## Non-disclosing vault probe
+
+Use the same fail-closed loader as `keyabra run` to verify that one logical
+vault entry is present and resolves to a non-empty value without printing the
+value:
+
+```bash
+keyabra env probe OPENAI_API_KEY \
+  --file ~/.config/keyabra/everplay-release.env
+```
+
+The JSON receipt contains only the vault path, variable name, permission mode,
+and boolean validation results. Direct entries, `NAME__FILE` pointers, and
+`NAME__CMD` providers are validated through the customer runtime path. Unsafe
+vault permissions, malformed entries, missing pointers, failed commands,
+missing names, and empty resolved values fail closed.
