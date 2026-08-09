@@ -12,18 +12,21 @@ from keyabra import (
     __version__,
     find_dist_files,
     load_env_file,
+    probe_env_file,
     prompt_secret,
     run_with_env,
+)
+from keyabra.cursor_gcp import (
+    CursorApiKeyError,
+    store_cursor_api_key_in_gcp,
+)
+from keyabra.cursor_gcp import (
+    SecretStoreError as CursorSecretStoreError,
 )
 from keyabra.discord_gcp import (
     DiscordTokenError,
     SecretStoreError,
     store_discord_token_in_gcp,
-)
-from keyabra.cursor_gcp import (
-    CursorApiKeyError,
-    SecretStoreError as CursorSecretStoreError,
-    store_cursor_api_key_in_gcp,
 )
 
 
@@ -42,7 +45,7 @@ def _require(cmd: str) -> str:
         if candidate.is_file() and os.access(candidate, os.X_OK):
             return str(candidate)
     print(f"keyabra: '{cmd}' not found — install it first:", file=sys.stderr)
-    print(f"  python3 -m pip install --user build twine", file=sys.stderr)
+    print("  python3 -m pip install --user build twine", file=sys.stderr)
     raise SystemExit(1)
 
 
@@ -93,7 +96,13 @@ def _cmd_run(argv: list[str]) -> int:
     for f in env_files:
         try:
             env_vars.update(load_env_file(f))
-        except Exception as exc:
+        except (
+            OSError,
+            ValueError,
+            RuntimeError,
+            KeyError,
+            subprocess.SubprocessError,
+        ) as exc:
             print(f"keyabra: {exc}", file=sys.stderr)
             return 1
     for name in env_names:
@@ -126,8 +135,7 @@ def _cmd_env(argv: list[str]) -> int:
         lines = p.read_text().splitlines()
         key = name.partition("=")[0]
         lines = [
-            l for l in lines
-            if not (l.split("=", 1)[0].strip() in (key,) and "=" in l)
+            l for l in lines if not (l.split("=", 1)[0].strip() in (key,) and "=" in l)
         ]
         lines.append(f"{name}={rhs}")
         p.write_text("\n".join(lines) + "\n")
@@ -157,6 +165,22 @@ def _cmd_env(argv: list[str]) -> int:
         upsert(p, f"{argv[1]}__FILE", str(target))
         return 0
 
+    if sub == "probe" and len(argv) >= 2:
+        p = vault_path(argv[2:])
+        try:
+            receipt = probe_env_file(p, argv[1])
+        except (
+            OSError,
+            ValueError,
+            RuntimeError,
+            KeyError,
+            subprocess.SubprocessError,
+        ) as exc:
+            print(f"keyabra: {exc}", file=sys.stderr)
+            return 1
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0
+
     if sub == "list":
         p = vault_path(argv[1:])
         if not p.is_file():
@@ -177,6 +201,7 @@ def _cmd_env(argv: list[str]) -> int:
         "  keyabra env init [--file PATH]\n"
         "  keyabra env set NAME [--file PATH]           prompt -> store value\n"
         "  keyabra env set-file NAME /path [--file PATH]  store NAME__FILE pointer\n"
+        "  keyabra env probe NAME [--file PATH]         validate without disclosure\n"
         "  keyabra env list [--file PATH]               names only, never values",
         file=sys.stderr,
     )
@@ -209,9 +234,10 @@ def _concealed_copy_macos(value: str) -> bool:
             input=value.encode(),
             capture_output=True,
             timeout=10,
+            check=False,
         )
         return r.returncode == 0
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return False
 
 
@@ -247,7 +273,10 @@ def _cmd_copy(argv: list[str]) -> int:
             try:
                 ttl = max(0, int(rest[i + 1]))
             except ValueError:
-                print(f"keyabra: --ttl wants an integer, got {rest[i+1]!r}", file=sys.stderr)
+                print(
+                    f"keyabra: --ttl wants an integer, got {rest[i + 1]!r}",
+                    file=sys.stderr,
+                )
                 return 1
             i += 2
         else:
@@ -256,11 +285,20 @@ def _cmd_copy(argv: list[str]) -> int:
 
     try:
         secrets = load_env_file(vault)
-    except Exception as exc:
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        KeyError,
+        subprocess.SubprocessError,
+    ) as exc:
         print(f"keyabra: {exc}", file=sys.stderr)
         return 1
     if name not in secrets:
-        print(f"keyabra: no '{name}' in {vault} (keyabra env list shows names)", file=sys.stderr)
+        print(
+            f"keyabra: no '{name}' in {vault} (keyabra env list shows names)",
+            file=sys.stderr,
+        )
         return 1
     value = secrets[name]
     if env_line:
@@ -285,7 +323,9 @@ def _cmd_copy(argv: list[str]) -> int:
     ttl_note = f"; clears in {ttl}s if untouched" if ttl else "; auto-clear disabled"
     concealed_note = ", concealed" if concealed else ""
     line_note = " as NAME=value line" if env_line else ""
-    print(f"keyabra: {name} on clipboard{line_note} ({len(value)} chars{concealed_note}{ttl_note})")
+    print(
+        f"keyabra: {name} on clipboard{line_note} ({len(value)} chars{concealed_note}{ttl_note})"
+    )
 
     if ttl:
         # Detached watcher: gets the value on stdin (never argv), sleeps, and
@@ -319,7 +359,10 @@ def _cmd_pypi(argv: list[str]) -> int:
         if not paths:
             paths = find_dist_files(Path.cwd())
             if not paths:
-                print("keyabra: no dist/ files — run from project root or pass paths", file=sys.stderr)
+                print(
+                    "keyabra: no dist/ files — run from project root or pass paths",
+                    file=sys.stderr,
+                )
                 return 1
 
         twine = _require("twine")
@@ -384,7 +427,10 @@ def _cmd_pypi(argv: list[str]) -> int:
 
     if sub == "yank":
         if len(argv) < 3:
-            print("usage: keyabra pypi yank <package> <version> [version...]", file=sys.stderr)
+            print(
+                "usage: keyabra pypi yank <package> <version> [version...]",
+                file=sys.stderr,
+            )
             return 1
         pkg = argv[1]
         versions = argv[2:]
@@ -404,8 +450,13 @@ def _cmd_pypi(argv: list[str]) -> int:
     print("usage:", file=sys.stderr)
     print("  keyabra pypi upload [dist/files...]", file=sys.stderr)
     print("  keyabra pypi publish [project-dir] [--skip-build]", file=sys.stderr)
-    print("  keyabra pypi yank-all              yank all public Noldorian releases", file=sys.stderr)
-    print("  keyabra pypi yank <pkg> <ver>...   yank specific release(s)", file=sys.stderr)
+    print(
+        "  keyabra pypi yank-all              yank all public Noldorian releases",
+        file=sys.stderr,
+    )
+    print(
+        "  keyabra pypi yank <pkg> <ver>...   yank specific release(s)", file=sys.stderr
+    )
     return 1
 
 
@@ -522,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
   keyabra pypi yank <pkg> <ver>...   yank specific release(s)
   keyabra run --env VAR -- cmd ...   prompt for secret(s) → run command
   keyabra run --env-file P -- cmd    load a 0600 env-vault → run command
-  keyabra env init|set|set-file|list manage the vault (~/.config/keyabra/)
+  keyabra env init|set|set-file|probe|list manage the vault (~/.config/keyabra/)
   keyabra copy NAME [--ttl S]        vault -> clipboard, never displayed; auto-clears.
                                      macOS: marked ConcealedType (history managers skip
                                      it) — but Handoff/Universal Clipboard can still
