@@ -1,5 +1,11 @@
 # xalakazam — the Everplay orienter
 
+`xalakazam --owner-actions` prints the Noldorian owner checkpoint rite: ask
+once for an owner-only UI, purchase, device, secret, client-login, or host
+permission action; pause; then perform one fresh verification after the
+owner's non-secret confirmation. It never grants permissions or accepts
+credentials in chat.
+
 Callable memory: `xalakazam --deploy` (Noldorian playbook) and
 `xalakazam --spells` (snx spellbook playbook) print everything an agent or
 human needs to install and strategically use the Everplay tooling on any

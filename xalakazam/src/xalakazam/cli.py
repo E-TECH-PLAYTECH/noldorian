@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 
-from xalakazam import BOOTSTRAP_HINT, DEPLOY, SPELLS, __version__
+from xalakazam import BOOTSTRAP_HINT, DEPLOY, OWNER_ACTIONS, SPELLS, __version__
 
 # The claude.ai/code environment "setup script": runs at container start,
 # before the agent wakes, consuming the NOLDORIAN_TOKEN env var so the ability
@@ -195,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
   xalakazam --deploy      how to install + strategically use Noldorian
   xalakazam --spells      how to install + strategically use the snx spellbook
   xalakazam --bootstrap   copy-paste install one-liners (gh / GITHUB_TOKEN)
+  xalakazam --owner-actions  owner-only UI, purchase, secret, and permission
+                          checkpoint rite (message once, pause, verify once)
   xalakazam --enable [owner/repo]  the copy-and-open walker: wire ANY repo's
                           claude.ai/code environment — opens the surface, puts
                           token then setup script on the clipboard, one paste
@@ -205,7 +207,7 @@ def main(argv: list[str] | None = None) -> int:
                           prompt → live validation → GCP Secret Manager
                           (internal evaluation only; does not install/license SDK)
                           ([--project P] [--secret S] [--no-open])
-  xalakazam --all         both playbooks
+  xalakazam --all         all playbooks
 
 Say the word, know the world."""
         )
@@ -227,6 +229,10 @@ Say the word, know the world."""
         print(BOOTSTRAP_HINT)
         return 0
 
+    if argv[0] == "--owner-actions":
+        print(OWNER_ACTIONS)
+        return 0
+
     if argv[0] == "--enable":
         return _cmd_enable(argv[1:])
 
@@ -245,6 +251,8 @@ Say the word, know the world."""
         print(DEPLOY)
         print()
         print(SPELLS)
+        print()
+        print(OWNER_ACTIONS)
         return 0
 
     print(f"xalakazam: unknown flag '{argv[0]}' (try --deploy / --spells)", file=sys.stderr)
