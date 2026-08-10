@@ -9,7 +9,7 @@ package is pip-installed, no repo checkout required.
 
 from __future__ import annotations
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 DEPLOY = """\
 # XALAKAZAM --deploy — Noldorian: what it is, how to install it, how to use it
@@ -164,4 +164,55 @@ bash <(gh api -H "Accept: application/vnd.github.raw" repos/Everplay-Tech/noldor
 # with GITHUB_TOKEN only (cloud / Claude Code web):
 curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \\
   https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh | bash -s -- --all
+"""
+
+OWNER_ACTIONS = """\
+# XALAKAZAM --owner-actions — Noldorian owner checkpoint rite
+
+## Purpose
+
+Use this rite when an agent reaches a step that only the owner can perform:
+open an app, tap or approve, pair or unlock a device, authenticate a client,
+confirm a purchase, or change a host permission. The agent sends one precise
+message and waits. Silence, a cable, a stale UI, or a prior permission choice
+is not completion.
+
+## Operator protocol
+
+1. Do one bounded owner action at a time. Name the exact app, screen, and gate.
+2. Never paste a passcode, token, API key, password, auth header, or private
+   screenshot into chat. For credentials, use `keyabra`'s hidden prompt and
+   provider validation; report only identity and outcome.
+3. Treat “I can purchase” as capability, not authorization. The owner must
+   explicitly confirm `purchase <product>` before a payment flow starts and
+   performs the final confirmation themselves.
+4. If the agent reports Full access but the runtime is restricted, do not fake
+   it with an environment variable or a local write probe. Change the supported
+   host permission setting, then re-read the runtime state once.
+5. After the owner replies with the requested non-secret phrase, make one fresh
+   supported verification. Continue only when the state actually changed.
+
+## Message template
+
+OWNER CHECKPOINT
+Need: <one owner action>
+Where: <exact app, device, or host surface>
+Why: <the gate this changes>
+Do: <one to three short steps>
+Do not send: passcodes, tokens, API keys, passwords, or private screenshots
+Reply: "<exact completion phrase>"
+After that: one fresh verification, then continue.
+Until then: no repeated probe, reinstall, deletion, or alternate-client loop.
+
+## Receipt shape
+
+{"schema":"noldorian.owner-action-checkpoint/v1",
+ "state":"owner_action_required|awaiting_confirmation|ready_to_verify|verified|held",
+ "need":"one precise owner action", "surface":"app/device/host",
+ "reply_phrase":"exact non-secret response",
+ "next_verification":"one supported read",
+ "secret_boundary":"secret material never enters chat, argv, logs, or receipt"}
+
+Noldorian provides the operator ceremony; it does not grant host permissions,
+click a financial confirmation, or bypass trust and authentication controls.
 """

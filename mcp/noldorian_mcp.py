@@ -10,7 +10,7 @@ or .mcp.json:
         "args": ["/path/to/noldorian/mcp/noldorian_mcp.py"]}}}
 
 Tools:
-    orient            {topic: deploy|spells|bootstrap}  -> the xalakazam playbooks
+    orient            {topic: deploy|spells|bootstrap|owner-actions}  -> the xalakazam playbooks
     install_noldorian {packages?: [keyabra,...]}        -> pip user-installs from GitHub
     install_spells    {dest?: ~/spells}                 -> clone spellbook + snx shim
     doctor            {}                                -> what's installed / missing
@@ -71,7 +71,8 @@ def tool_orient(args: dict) -> dict:
     try:
         import xalakazam  # installed?
         docs = {"deploy": xalakazam.DEPLOY, "spells": xalakazam.SPELLS,
-                "bootstrap": xalakazam.BOOTSTRAP_HINT}
+                "bootstrap": xalakazam.BOOTSTRAP_HINT,
+                "owner-actions": xalakazam.OWNER_ACTIONS}
     except ImportError:
         # Fall back to the repo copy sitting next to this file.
         src = Path(__file__).resolve().parent.parent / "xalakazam" / "src"
@@ -79,14 +80,15 @@ def tool_orient(args: dict) -> dict:
         try:
             import xalakazam  # type: ignore
             docs = {"deploy": xalakazam.DEPLOY, "spells": xalakazam.SPELLS,
-                    "bootstrap": xalakazam.BOOTSTRAP_HINT}
+                    "bootstrap": xalakazam.BOOTSTRAP_HINT,
+                    "owner-actions": xalakazam.OWNER_ACTIONS}
         except ImportError:
             return {"error": "xalakazam not installed and repo copy not found — "
                              "run install_noldorian first"}
     if topic == "all":
         return {"text": docs["deploy"] + "\n\n" + docs["spells"]}
     if topic not in docs:
-        return {"error": f"unknown topic {topic!r} (deploy|spells|bootstrap|all)"}
+        return {"error": f"unknown topic {topic!r} (deploy|spells|bootstrap|owner-actions|all)"}
     return {"text": docs[topic]}
 
 
@@ -143,9 +145,9 @@ def tool_doctor(_args: dict) -> dict:
 TOOLS = [
     {"name": "orient",
      "description": "The Everplay playbooks (xalakazam): how to deploy and strategically "
-                    "use Noldorian and the snx spellbook. topic: deploy|spells|bootstrap|all",
+                    "use Noldorian and the snx spellbook. topic: deploy|spells|bootstrap|owner-actions|all",
      "inputSchema": {"type": "object", "properties": {
-         "topic": {"type": "string", "enum": ["deploy", "spells", "bootstrap", "all"]}}}},
+         "topic": {"type": "string", "enum": ["deploy", "spells", "bootstrap", "owner-actions", "all"]}}}},
     {"name": "install_noldorian",
      "description": "pip user-install Noldorian CLIs from the private GitHub repo "
                     "(default: all of keyabra/xalakazam/xadabra/binabra/xabra).",
