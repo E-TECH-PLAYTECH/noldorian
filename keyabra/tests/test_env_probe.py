@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 from keyabra.cli import main
 
-from keyabra import load_env_file, probe_env_file
+from keyabra import load_env_file, load_env_value, probe_env_file
 
 
 def write_vault(path: Path, text: str) -> Path:
@@ -53,6 +53,28 @@ def test_probe_resolves_command_provider_without_disclosure(tmp_path: Path) -> N
 
     assert receipt["non_empty"] is True
     assert secret not in json.dumps(receipt)
+
+
+def test_probe_does_not_execute_unrelated_provider(tmp_path: Path) -> None:
+    vault = write_vault(
+        tmp_path / "vault.env",
+        "UNRELATED__CMD=exit 7\nTOKEN=target-secret\n",
+    )
+
+    receipt = probe_env_file(vault, "TOKEN")
+
+    assert receipt["present"] is True
+    assert receipt["non_empty"] is True
+
+
+def test_selective_load_fails_closed_for_multiple_providers(tmp_path: Path) -> None:
+    vault = write_vault(
+        tmp_path / "vault.env",
+        "TOKEN=direct\nTOKEN__CMD=printf command\n",
+    )
+
+    with pytest.raises(ValueError, match="multiple providers"):
+        load_env_value(vault, "TOKEN")
 
 
 def test_probe_fails_closed_for_unsafe_permissions(tmp_path: Path) -> None:

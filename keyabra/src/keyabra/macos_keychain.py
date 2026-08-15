@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-from keyabra import load_env_file
+from keyabra import load_env_value
 
 
 class MacOSKeychainError(RuntimeError):
@@ -122,13 +122,9 @@ def unlock_keychain_from_vault(
     if not keychain_path.is_file():
         raise FileNotFoundError(f"keychain not found: {keychain_path}")
 
-    resolved: dict[str, str] = {}
     password = ""
     try:
-        resolved = load_env_file(vault_path)
-        if credential_name not in resolved:
-            raise KeyError(f"credential {credential_name!r} is not present")
-        password = resolved[credential_name]
+        password = load_env_value(vault_path, credential_name)
         if not password:
             raise ValueError(
                 f"credential {credential_name!r} resolves to an empty value"
@@ -155,5 +151,3 @@ def unlock_keychain_from_vault(
         }
     finally:
         password = ""
-        for name in resolved:
-            resolved[name] = ""

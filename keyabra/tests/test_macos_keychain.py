@@ -40,6 +40,28 @@ def test_unlock_uses_secret_without_disclosing_it(tmp_path: Path) -> None:
     assert secret not in json.dumps(receipt, sort_keys=True)
 
 
+def test_unlock_does_not_execute_unrelated_provider(tmp_path: Path) -> None:
+    vault = write_vault(
+        tmp_path / "vault.env",
+        "ORG_PAT__CMD=exit 1\nLOGIN=login-password-sentinel\n",
+    )
+    keychain = tmp_path / "login.keychain-db"
+    keychain.touch()
+    passwords: list[str] = []
+
+    receipt = unlock_keychain_from_vault(
+        vault=vault,
+        credential_name="LOGIN",
+        keychain=keychain,
+        probe_identity="IDENTITY-HASH",
+        unlocker=lambda _path, password: passwords.append(password),
+        probe_runner=lambda _identity: None,
+    )
+
+    assert passwords == ["login-password-sentinel"]
+    assert receipt["codesign_probe"]["passed"] is True
+
+
 def test_unlock_without_probe_is_explicit(tmp_path: Path) -> None:
     vault = write_vault(tmp_path / "vault.env", "LOGIN=sentinel\n")
     keychain = tmp_path / "login.keychain-db"

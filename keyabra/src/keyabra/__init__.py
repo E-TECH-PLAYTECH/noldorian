@@ -20,17 +20,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "0.2.9"
+__version__ = "0.2.10"
 
 ENV_DIR = Path.home() / ".config" / "keyabra"
 
 
-def load_env_file(path: Path | str) -> dict[str, str]:
-    """Parse an env-vault file into {NAME: value}, resolving indirections.
-
-    Refuses group/other-readable vaults (chmod 600 it first) — a vault that
-    other users can read is not a vault.
-    """
+def _vault_lines(path: Path | str) -> tuple[Path, list[str]]:
     p = Path(path).expanduser()
     if not p.is_file():
         raise FileNotFoundError(f"env file not found: {p}")
@@ -40,64 +35,121 @@ def load_env_file(path: Path | str) -> dict[str, str]:
             f"env file {p} is group/other-accessible (chmod 600 it): "
             f"mode {oct(p.stat().st_mode & 0o777)}"
         )
-    out: dict[str, str] = {}
-    for lineno, raw in enumerate(p.read_text().splitlines(), 1):
-        line = raw.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" not in line:
-            raise ValueError(f"{p}:{lineno}: not NAME=value: {raw!r}")
-        name, _, value = line.partition("=")
-        name = name.strip()
-        value = value.strip()
-        if (value.startswith('"') and value.endswith('"')) or (
-            value.startswith("'") and value.endswith("'")
-        ):
-            value = value[1:-1]
-        if name.endswith("__FILE"):
-            target = Path(value).expanduser()
-            if not target.is_file():
-                raise FileNotFoundError(
-                    f"{p}:{lineno}: {name} -> missing file {target}"
-                )
-            out[name[: -len("__FILE")]] = target.read_text()
-        elif name.endswith("__CMD"):
-            r = subprocess.run(
-                value,
-                shell=True,
-                capture_output=True,
-                text=True,
-                timeout=60,
-                check=False,
+    return p, p.read_text().splitlines()
+
+
+def _parse_vault_line(p: Path, lineno: int, raw: str) -> tuple[str, str] | None:
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        return None
+    if "=" not in line:
+        raise ValueError(f"{p}:{lineno}: not NAME=value: {raw!r}")
+    name, _, value = line.partition("=")
+    name = name.strip()
+    value = value.strip()
+    if (value.startswith('"') and value.endswith('"')) or (
+        value.startswith("'") and value.endswith("'")
+    ):
+        value = value[1:-1]
+    return name, value
+
+
+def _resolve_vault_entry(p: Path, lineno: int, name: str, value: str) -> str:
+    if name.endswith("__FILE"):
+        target = Path(value).expanduser()
+        if not target.is_file():
+            raise FileNotFoundError(f"{p}:{lineno}: {name} -> missing file {target}")
+        return target.read_text()
+    if name.endswith("__CMD"):
+        r = subprocess.run(
+            value,
+            shell=True,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=False,
+        )
+        if r.returncode != 0:
+            raise RuntimeError(
+                f"{p}:{lineno}: {name} command failed with exit {r.returncode}"
             )
-            if r.returncode != 0:
-                raise RuntimeError(
-                    f"{p}:{lineno}: {name} command failed with exit {r.returncode}"
-                )
-            out[name[: -len("__CMD")]] = r.stdout.strip()
+        return r.stdout.strip()
+    return value
+
+
+def load_env_file(path: Path | str) -> dict[str, str]:
+    """Parse an env-vault file into {NAME: value}, resolving all entries.
+
+    Refuses group/other-readable vaults (chmod 600 it first) — a vault that
+    other users can read is not a vault.
+    """
+    p, lines = _vault_lines(path)
+    out: dict[str, str] = {}
+    for lineno, raw in enumerate(lines, 1):
+        parsed = _parse_vault_line(p, lineno, raw)
+        if parsed is None:
+            continue
+        name, value = parsed
+        resolved = _resolve_vault_entry(p, lineno, name, value)
+        if name.endswith("__FILE"):
+            out[name[: -len("__FILE")]] = resolved
+        elif name.endswith("__CMD"):
+            out[name[: -len("__CMD")]] = resolved
         else:
-            out[name] = value
+            out[name] = resolved
     return out
+
+
+def load_env_value(path: Path | str, var_name: str) -> str:
+    """Resolve one logical vault entry without executing unrelated providers.
+
+    The entire vault still receives permission and syntax validation. Exactly
+    one of ``NAME``, ``NAME__FILE``, or ``NAME__CMD`` must define *var_name*;
+    ambiguous providers fail closed instead of depending on file order.
+    """
+    if not var_name or not var_name.strip():
+        raise ValueError("secret variable name must not be empty")
+
+    p, lines = _vault_lines(path)
+    candidates: list[tuple[int, str, str]] = []
+    accepted_names = {var_name, f"{var_name}__FILE", f"{var_name}__CMD"}
+    for lineno, raw in enumerate(lines, 1):
+        parsed = _parse_vault_line(p, lineno, raw)
+        if parsed is None:
+            continue
+        name, value = parsed
+        if name in accepted_names:
+            candidates.append((lineno, name, value))
+
+    if not candidates:
+        raise KeyError(f"secret variable {var_name!r} is not present")
+    if len(candidates) != 1:
+        providers = ", ".join(name for _, name, _ in candidates)
+        raise ValueError(
+            f"secret variable {var_name!r} has multiple providers: {providers}"
+        )
+
+    lineno, name, value = candidates[0]
+    return _resolve_vault_entry(p, lineno, name, value)
 
 
 def probe_env_file(path: Path | str, var_name: str) -> dict[str, object]:
     """Validate one logical vault entry without returning its secret value.
 
-    The probe deliberately uses :func:`load_env_file`, so direct values,
+    The probe deliberately uses :func:`load_env_value`, so direct values,
     ``__FILE`` pointers, ``__CMD`` providers, vault permissions, and parse
-    failures follow the same fail-closed path as ``keyabra run``. The returned
-    receipt contains only identity and validation metadata.
+    failures follow the same fail-closed path without executing unrelated
+    providers. The returned receipt contains only identity and validation
+    metadata.
     """
     if not var_name or not var_name.strip():
         raise ValueError("secret variable name must not be empty")
 
     vault = Path(path).expanduser()
-    resolved: dict[str, str] = {}
+    resolved = ""
     try:
-        resolved = load_env_file(vault)
-        if var_name not in resolved:
-            raise KeyError(f"secret variable {var_name!r} is not present")
-        if not resolved[var_name]:
+        resolved = load_env_value(vault, var_name)
+        if not resolved:
             raise ValueError(f"secret variable {var_name!r} resolves to an empty value")
 
         mode = vault.stat().st_mode & 0o777
@@ -110,8 +162,7 @@ def probe_env_file(path: Path | str, var_name: str) -> dict[str, object]:
             "mode": oct(mode),
         }
     finally:
-        for name in resolved:
-            resolved[name] = ""
+        resolved = ""
 
 
 def prompt_secret(
