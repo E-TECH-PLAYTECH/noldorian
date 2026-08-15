@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
 
 import pytest
 
-from keyabra.macos_keychain import unlock_keychain_from_vault
+from keyabra.macos_keychain import _codesign_probe, unlock_keychain_from_vault
 
 
 def write_vault(path: Path, text: str) -> Path:
@@ -95,3 +96,13 @@ def test_probe_failure_does_not_disclose_secret(tmp_path: Path) -> None:
         )
 
     assert secret not in str(error.value)
+
+
+def test_codesign_probe_does_not_copy_sip_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # /usr/bin/true accepts and ignores the codesign-shaped arguments. This
+    # exercises creation of the temporary probe without requiring a key.
+    monkeypatch.setattr(shutil, "which", lambda _name: "/usr/bin/true")
+
+    _codesign_probe("IDENTITY-HASH")
