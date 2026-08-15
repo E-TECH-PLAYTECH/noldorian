@@ -85,7 +85,11 @@ def _codesign_probe(identity: str) -> None:
 
     with tempfile.TemporaryDirectory(prefix="keyabra-codesign-") as directory:
         probe = Path(directory) / "probe"
-        shutil.copy2("/usr/bin/true", probe)
+        # ``copy2`` tries to preserve SIP-managed flags and metadata from
+        # /usr/bin/true. macOS rejects that metadata write in a temporary
+        # directory even though copying the executable contents is allowed.
+        shutil.copyfile("/usr/bin/true", probe)
+        probe.chmod(0o755)
         completed = subprocess.run(
             [codesign, "--force", "--sign", identity, "--timestamp=none", str(probe)],
             stdout=subprocess.DEVNULL,
