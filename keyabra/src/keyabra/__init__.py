@@ -20,7 +20,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-__version__ = "0.2.7"
+__version__ = "0.2.8"
 
 ENV_DIR = Path.home() / ".config" / "keyabra"
 

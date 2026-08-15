@@ -129,3 +129,29 @@ and boolean validation results. Direct entries, `NAME__FILE` pointers, and
 `NAME__CMD` providers are validated through the customer runtime path. Unsafe
 vault permissions, malformed entries, missing pointers, failed commands,
 missing names, and empty resolved values fail closed.
+
+## Headless macOS signing keychain
+
+Enroll the Mac login-keychain password once through Keyabra's hidden prompt:
+
+```bash
+keyabra env set MACOS_LOGIN_KEYCHAIN_PASSWORD \
+  --file ~/.config/keyabra/everplay-release.env
+```
+
+Then make every self-hosted signing job unlock and prove the private-key path
+before invoking Xcode:
+
+```bash
+keyabra macos-keychain unlock \
+  --env MACOS_LOGIN_KEYCHAIN_PASSWORD \
+  --file ~/.config/keyabra/everplay-release.env \
+  --keychain ~/Library/Keychains/login.keychain-db \
+  --probe-identity 01AFB4F264892F317783F06213799BAD7E4D5FCC
+```
+
+The password is loaded from a required-0600 vault and passed directly to the
+macOS Security framework in process. It never appears in command arguments,
+the child environment, or the JSON receipt. The optional codesign probe proves
+that a headless process can actually use the named identity; an unlock without
+usable private-key access is not reported as success.

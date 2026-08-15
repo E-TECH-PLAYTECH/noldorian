@@ -28,6 +28,7 @@ from keyabra.discord_gcp import (
     SecretStoreError,
     store_discord_token_in_gcp,
 )
+from keyabra.macos_keychain import MacOSKeychainError, unlock_keychain_from_vault
 
 
 def _require(cmd: str) -> str:
@@ -561,6 +562,64 @@ def _cmd_cursor(argv: list[str]) -> int:
     return 0
 
 
+def _cmd_macos_keychain(argv: list[str]) -> int:
+    sub = argv[0] if argv else ""
+    usage = (
+        "usage: keyabra macos-keychain unlock --env NAME --file VAULT "
+        "[--keychain PATH] [--probe-identity HASH]"
+    )
+    if sub != "unlock":
+        print(usage, file=sys.stderr)
+        return 1
+
+    values: dict[str, str] = {}
+    args = argv[1:]
+    allowed = {"--env", "--file", "--keychain", "--probe-identity"}
+    i = 0
+    while i < len(args):
+        if args[i] not in allowed or i + 1 >= len(args):
+            print(
+                f"keyabra: unexpected or incomplete argument '{args[i]}'",
+                file=sys.stderr,
+            )
+            return 1
+        values[args[i][2:].replace("-", "_")] = args[i + 1]
+        i += 2
+
+    missing = [name for name in ("env", "file") if not values.get(name)]
+    if missing:
+        print(
+            "keyabra: missing required option(s): "
+            + ", ".join(f"--{name}" for name in missing),
+            file=sys.stderr,
+        )
+        print(usage, file=sys.stderr)
+        return 1
+
+    keychain = values.get(
+        "keychain", str(Path.home() / "Library/Keychains/login.keychain-db")
+    )
+    try:
+        receipt = unlock_keychain_from_vault(
+            vault=values["file"],
+            credential_name=values["env"],
+            keychain=keychain,
+            probe_identity=values.get("probe_identity"),
+        )
+    except (
+        OSError,
+        ValueError,
+        RuntimeError,
+        KeyError,
+        subprocess.SubprocessError,
+        MacOSKeychainError,
+    ) as exc:
+        print(f"keyabra: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(receipt, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
@@ -583,6 +642,8 @@ def main(argv: list[str] | None = None) -> int:
                                      Manager via stdin → readback + Discord postflight
   keyabra cursor gcp-store ...       hidden prompt → Cursor /v0/me preflight → GCP
                                      Secret Manager via stdin → readback + postflight
+  keyabra macos-keychain unlock ...  0600 vault → in-process keychain unlock →
+                                     optional headless codesign proof
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
@@ -620,6 +681,9 @@ Examples:
 
     if argv[0] == "cursor":
         return _cmd_cursor(argv[1:])
+
+    if argv[0] == "macos-keychain":
+        return _cmd_macos_keychain(argv[1:])
 
     print(f"keyabra: unknown command '{argv[0]}' (try: keyabra help)", file=sys.stderr)
     return 1
