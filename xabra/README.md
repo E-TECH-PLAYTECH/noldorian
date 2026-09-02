@@ -6,8 +6,7 @@ Portable and pip-installable so any operator or agent, on any machine with an
 authenticated `gh`, gets the same receipt-bearing install path.
 
 ```bash
-# from the private repo (true gatekeeping — PyPI is notice, not a gate)
-pip install "git+ssh://git@github.com/Everplay-Tech/noldorian.git#subdirectory=xabra"
+pip install "git+https://github.com/E-TECH-PLAYTECH/noldorian.git#subdirectory=xabra"
 ```
 
 ## Usage — one action per invocation
@@ -77,4 +76,4 @@ local path. `kind: "cli"` installs a `tar.gz` binary to `~/.local/bin` instead.
 - Spell cousin: `snx runner-install` (DUD3Runner-specific, spellbook receipts).
   xabra is the portable, family-wide Noldorian; it does not require the spellbook.
 
-Proprietary — Copyright © 2026 Everplay-Tech LLC. See [LICENSE](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).

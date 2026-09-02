@@ -20,7 +20,7 @@ Noldorian is Everplay-Tech's OPERATOR tier: portable, pip-installable CLIs for
 humans and agents. It sits beside the snx spellbook (see `xalakazam --spells`):
 spells are agent-facing (JSON receipts, no prompts, banked to a ledger);
 Noldorian tools are the human-in-the-loop and cross-machine glue.
-Source of truth: the PRIVATE repo github.com/Everplay-Tech/noldorian.
+Source of truth: the public repo github.com/E-TECH-PLAYTECH/noldorian.
 
 | CLI        | Package  | Use it for |
 |------------|----------|------------|
@@ -37,27 +37,21 @@ Source of truth: the PRIVATE repo github.com/Everplay-Tech/noldorian.
 
 ## Installing (pick the line that matches where you are)
 
-Auth first: you need EITHER an authenticated `gh` CLI OR a GITHUB_TOKEN env var
-with repo read on Everplay-Tech (repos are private).
-
-1) Any machine with gh (macOS or Linux) — the bootstrap does everything:
-   bash <(gh api -H "Accept: application/vnd.github.raw" \\
-         repos/Everplay-Tech/noldorian/contents/bootstrap.sh)
-
-2) Cloud container / Claude Code on the web (bash + GITHUB_TOKEN):
-   curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \\
-     -H "Accept: application/vnd.github.raw" \\
-     https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh \\
+1) Any machine with bash, Python, and Git:
+   curl -fsSL \\
+     https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \\
      | bash -s -- --all
-   (No Homebrew needed there; containers are Linux, pip is lighter and works.)
 
-3) Direct pip, one package at a time (TOKEN or gh credential helper):
+2) Install the public agent-facing package directly from PyPI:
+   python3 -m pip install noldorian
+
+3) Direct Git install, one family package at a time:
    python3 -m pip install --user \\
-     "git+https://github.com/Everplay-Tech/noldorian.git#subdirectory=keyabra"
+     "git+https://github.com/E-TECH-PLAYTECH/noldorian.git#subdirectory=keyabra"
    (swap subdirectory= for xalakazam / xadabra / binabra / xabra)
 
 4) macOS Homebrew (the repo doubles as a tap — no cask; these are CLIs):
-   brew tap everplay-tech/noldorian https://github.com/Everplay-Tech/noldorian.git
+   brew tap everplay-tech/noldorian https://github.com/E-TECH-PLAYTECH/noldorian.git
    brew install everplay-tech/noldorian/noldorian
 
 After install make sure the pip user bin dir is on PATH
@@ -85,10 +79,9 @@ After install make sure the pip user bin dir is on PATH
 
 ## MCP
 
-The repo ships an MCP server (mcp/noldorian_mcp.py) exposing orient /
-install_noldorian / install_spells / doctor — register it and any MCP-capable
-agent can self-serve this whole page and the installs:
-  claude mcp add noldorian -- python3 /path/to/noldorian/mcp/noldorian_mcp.py
+The public package ships `noldorian-mcp` for capability discovery and
+policy-bound invocation. The repository also retains an operator deployment
+MCP at `mcp/noldorian_mcp.py`.
 """
 
 SPELLS = """\
@@ -96,7 +89,7 @@ SPELLS = """\
 
 ## What spells are (30 seconds)
 
-The spellbook (PRIVATE repo github.com/Everplay-Tech/spells) is a Python CLI
+The spellbook (PRIVATE repo github.com/E-TECH-PLAYTECH/spells) is a Python CLI
 (`snx <spell> [args]`) where every cast returns a JSON RECEIPT and is banked to
 an append-only ledger (the akashic/grimoire). Doctrine: **receipts over
 claims** — report what the receipt says; never re-narrate raw shell output.
@@ -106,7 +99,7 @@ default and only `--confirm` writes (with timestamped backups).
 ## Installing on a new machine
 
 Needs: python3, git, authenticated `gh` (repos are private).
-  gh repo clone Everplay-Tech/spells ~/spells
+  gh repo clone E-TECH-PLAYTECH/spells ~/spells
   mkdir -p ~/bin && cat > ~/bin/snx <<'SH'
 #!/bin/bash
 # snx — global wrapper for the Snax CLI
@@ -158,12 +151,12 @@ so no receipts ledger) — in the cloud use plain shell / `xadabra --cloud`.
 BOOTSTRAP_HINT = """\
 # Quick bootstrap (copy-paste)
 
-# with gh:
-bash <(gh api -H "Accept: application/vnd.github.raw" repos/Everplay-Tech/noldorian/contents/bootstrap.sh) --all
+curl -fsSL \\
+  https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \\
+  | bash -s -- --all
 
-# with GITHUB_TOKEN only (cloud / Claude Code web):
-curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" -H "Accept: application/vnd.github.raw" \\
-  https://api.github.com/repos/Everplay-Tech/noldorian/contents/bootstrap.sh | bash -s -- --all
+# The optional --spells path additionally requires authenticated gh because
+# the Everplay spellbook is a separate private repository.
 """
 
 OWNER_ACTIONS = """\

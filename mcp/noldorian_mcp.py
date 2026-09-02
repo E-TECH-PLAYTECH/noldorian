@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """noldorian-mcp — a zero-dependency stdio MCP server that installs and
-orients the Everplay tooling (Noldorian CLIs + the snx spellbook) from the
-private GitHub repos.
+orients the Everplay tooling (public Noldorian CLIs + the private snx
+spellbook).
 
 Register (Claude Code):
     claude mcp add noldorian -- python3 /path/to/noldorian/mcp/noldorian_mcp.py
@@ -15,7 +15,8 @@ Tools:
     install_spells    {dest?: ~/spells}                 -> clone spellbook + snx shim
     doctor            {}                                -> what's installed / missing
 
-Auth: uses `gh` if authenticated, else GITHUB_TOKEN. Pure stdlib; Python 3.8+.
+Auth is unnecessary for Noldorian. The optional private spellbook uses an
+authenticated `gh` CLI. Pure stdlib; Python 3.8+.
 """
 from __future__ import annotations
 
@@ -26,9 +27,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO = "Everplay-Tech/noldorian"
-SPELLS_REPO = "Everplay-Tech/spells"
-PACKAGES = ("keyabra", "xalakazam", "xadabra", "binabra", "xabra")
+REPO = "E-TECH-PLAYTECH/noldorian"
+SPELLS_REPO = "E-TECH-PLAYTECH/spells"
+PACKAGES = ("noldorian", "keyabra", "xalakazam", "xadabra", "binabra", "xabra")
 SNX_SHIM = """#!/bin/bash
 # snx — global wrapper for the Snax CLI (installed by noldorian-mcp)
 exec /usr/bin/env PYTHONPATH="$HOME/spells/snax:${PYTHONPATH}" python3 -m snax.cli "$@"
@@ -43,22 +44,11 @@ def _sh(cmd, timeout=600, env=None):
     return r.returncode, (r.stdout or "").strip(), (r.stderr or "").strip()
 
 
-def _token() -> str | None:
-    tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-    if tok:
-        return tok
-    if shutil.which("gh"):
-        code, out, _ = _sh(["gh", "auth", "token"], timeout=30)
-        if code == 0 and out:
-            return out
-    return None
-
-
-def _git_url(repo: str) -> str | None:
-    tok = _token()
-    if tok is None:
-        return None
-    return f"https://x-access-token:{tok}@github.com/{repo}.git"
+def _gh_authenticated() -> bool:
+    if not shutil.which("gh"):
+        return False
+    code, _, _ = _sh(["gh", "auth", "status"], timeout=30)
+    return code == 0
 
 
 def _user_bin() -> str:
@@ -97,13 +87,12 @@ def tool_install_noldorian(args: dict) -> dict:
     bad = [p for p in pkgs if p not in PACKAGES]
     if bad:
         return {"error": f"unknown packages {bad}; valid: {list(PACKAGES)}"}
-    url = _git_url(REPO)
-    if url is None:
-        return {"error": "no GitHub auth: set GITHUB_TOKEN or authenticate gh"}
+    url = f"https://github.com/{REPO}.git"
     results = {}
     for p in pkgs:
+        spec = f"git+{url}" if p == "noldorian" else f"git+{url}#subdirectory={p}"
         code, out, err = _sh([sys.executable, "-m", "pip", "install", "--user",
-                              "--quiet", f"git+{url}#subdirectory={p}"])
+                              "--quiet", spec])
         results[p] = "ok" if code == 0 else f"FAILED: {(err or out)[-300:]}"
     return {"installed": results, "path_hint": f"ensure {_user_bin()} is on PATH"}
 
@@ -113,10 +102,11 @@ def tool_install_spells(args: dict) -> dict:
     if (dest / ".git").exists():
         note = "already present"
     else:
-        url = _git_url(SPELLS_REPO)
-        if url is None:
-            return {"error": "no GitHub auth: set GITHUB_TOKEN or authenticate gh"}
-        code, out, err = _sh(["git", "clone", "--depth", "1", url, str(dest)])
+        if not _gh_authenticated():
+            return {"error": "private spellbook requires authenticated gh"}
+        code, out, err = _sh(
+            ["gh", "repo", "clone", SPELLS_REPO, str(dest), "--", "--depth", "1"]
+        )
         if code != 0:
             return {"error": f"clone failed: {(err or out)[-300:]}"}
         note = "cloned"
@@ -136,7 +126,7 @@ def tool_doctor(_args: dict) -> dict:
     for cli in ("keyabra", "xalakazam", "xadabra", "abra", "xabra", "snx", "gh"):
         out[cli] = shutil.which(cli) or "MISSING"
     out["spells_repo"] = "present" if (Path.home() / "spells" / ".git").exists() else "MISSING"
-    out["github_auth"] = "ok" if _token() else "MISSING (gh login or GITHUB_TOKEN)"
+    out["github_auth"] = "ok" if _gh_authenticated() else "not configured (needed only for private repositories)"
     vault = Path.home() / ".config" / "keyabra" / "everplay-release.env"
     out["release_vault"] = str(vault) if vault.exists() else "not provisioned"
     return out
@@ -149,8 +139,7 @@ TOOLS = [
      "inputSchema": {"type": "object", "properties": {
          "topic": {"type": "string", "enum": ["deploy", "spells", "bootstrap", "owner-actions", "all"]}}}},
     {"name": "install_noldorian",
-     "description": "pip user-install Noldorian CLIs from the private GitHub repo "
-                    "(default: all of keyabra/xalakazam/xadabra/binabra/xabra).",
+     "description": "pip user-install the public Noldorian packages from GitHub.",
      "inputSchema": {"type": "object", "properties": {
          "packages": {"type": "array", "items": {"type": "string"}}}}},
     {"name": "install_spells",

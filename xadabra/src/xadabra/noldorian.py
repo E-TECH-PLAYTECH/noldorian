@@ -120,7 +120,12 @@ def cmd_pack(args: argparse.Namespace) -> int:
             lines.append(
                 f'pip install "git+ssh://git@github.com/{org}/{repo}.git@{tag}#subdirectory={pkg}"'
             )
-        lines += ["", "Do not install from public PyPI for production use.", ""]
+        lines += [
+            "",
+            "Public agent client: python3 -m pip install noldorian",
+            "Family packages may be installed from a pinned source tag.",
+            "",
+        ]
         readme.write_text("\n".join(lines), encoding="utf-8")
 
     print(f"\npacked monorepo at {dest}")

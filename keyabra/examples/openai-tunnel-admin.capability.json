@@ -1,0 +1,20 @@
+{
+  "adapter": "openai_tunnel_admin",
+  "description": "Manage OpenAI Secure MCP Tunnels for an approved workspace",
+  "id": "openai.tunnel.admin",
+  "operations": [
+    "tunnels.create",
+    "tunnels.get",
+    "tunnels.list"
+  ],
+  "owner_note": "Enrollment requires a real OpenAI admin API key; runtime tunnel tokens do not satisfy this capability.",
+  "provider": "openai",
+  "resources": {
+    "organization_ids": [
+      "org_example"
+    ],
+    "workspace_ids": [
+      "workspace_example"
+    ]
+  }
+}

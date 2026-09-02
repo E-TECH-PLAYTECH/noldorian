@@ -28,4 +28,4 @@ does not install or redistribute the Cursor SDK and does not grant production,
 customer-delivery, or redistribution rights. Those uses require separate
 commercial-rights clearance and dependency review.
 
-Proprietary — © 2026 Everplay-Tech LLC.
+Licensed under the [Apache License 2.0](LICENSE).

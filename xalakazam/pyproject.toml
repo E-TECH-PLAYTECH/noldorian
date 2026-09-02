@@ -8,14 +8,15 @@ version = "0.1.5"
 description = "The Everplay orienter — callable memory for deploying and strategically using Noldorian and the snx spellbook"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "LicenseRef-Proprietary"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "Everplay-Tech LLC" }]
 keywords = ["noldorian", "spells", "snx", "orienter", "deploy", "xalakazam"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "License :: Other/Proprietary License",
+  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
 ]
@@ -23,6 +24,9 @@ dependencies = []
 
 [project.scripts]
 xalakazam = "xalakazam.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xalakazam"]

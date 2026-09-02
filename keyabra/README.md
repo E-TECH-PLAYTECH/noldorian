@@ -1,6 +1,6 @@
 # keyabra
 
-Proprietary — Copyright © 2026 Everplay-Tech LLC. See [LICENSE](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).
 
 Prompt for API tokens **once**, run the command — no export/copy/delete/notepad loop.
 
@@ -60,10 +60,10 @@ Use this operator rite after Discord reveals a newly reset token:
 
 ```bash
 keyabra discord gcp-store \
-  --application-id 1532476149249216542 \
-  --guild-id 1532387746604384306 \
-  --project everplay-centaur-chess \
-  --secret everplay-discord-agent-relay-token
+  --application-id 123456789012345678 \
+  --guild-id 123456789012345678 \
+  --project example-project \
+  --secret example-discord-token
 ```
 
 The token is entered at a hidden prompt. Keyabra first verifies the bot identity
@@ -82,8 +82,8 @@ After creating a **User API Key** in the
 
 ```bash
 keyabra cursor gcp-store \
-  --project everplay-centaur-chess \
-  --secret everplay-cursor-sdk-api-key
+  --project example-project \
+  --secret example-cursor-api-key
 ```
 
 The key is entered at a hidden prompt. Keyabra validates it against Cursor's
@@ -147,7 +147,7 @@ keyabra macos-keychain unlock \
   --env MACOS_LOGIN_KEYCHAIN_PASSWORD \
   --file ~/.config/keyabra/everplay-release.env \
   --keychain ~/Library/Keychains/login.keychain-db \
-  --probe-identity 01AFB4F264892F317783F06213799BAD7E4D5FCC
+  --probe-identity 0123456789ABCDEF0123456789ABCDEF01234567
 ```
 
 The password is loaded from a required-0600 vault and passed directly to the
@@ -155,3 +155,20 @@ macOS Security framework in process. It never appears in command arguments,
 the child environment, or the JSON receipt. The optional codesign probe proves
 that a headless process can actually use the named identity; an unlock without
 usable private-key access is not reported as success.
+
+## Agent-safe capability broker
+
+The root-owned Noldorian broker separates credential custody from agent use.
+Agents can list public capability metadata and invoke only fixed, typed
+operations; there is no credential export, arbitrary shell, or raw HTTP tool.
+
+```bash
+keyabra broker list
+keyabra broker describe openai.tunnel.admin
+keyabra broker invoke openai.tunnel.admin tunnels.list \
+  --arguments-json '{"organization_ids":["org_example"]}'
+```
+
+Enrollment and legacy-vault import require root peer authorization. See
+[`SECURE_CAPABILITY_BROKER.md`](../SECURE_CAPABILITY_BROKER.md) for the threat
+model, installer, and provider-adapter contract.

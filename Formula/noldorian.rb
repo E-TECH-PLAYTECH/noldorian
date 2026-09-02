@@ -4,9 +4,6 @@
 #   brew tap everplay-tech/noldorian https://github.com/Everplay-Tech/noldorian.git
 #   brew install everplay-tech/noldorian/noldorian
 #
-# Private repo: brew's git clone uses your git credential helper, so an
-# authenticated `gh` (gh auth setup-git) makes the tap Just Work.
-#
 # NOTE: formula for CLIs (keyabra/xalakazam/xadabra/abra/xabra) — there is no
 # cask; casks are for GUI app bundles and these are terminal tools.
 # STATUS: scaffold, authored 2026-07-08 — not yet exercised by a real
@@ -17,7 +14,7 @@ class Noldorian < Formula
   homepage "https://github.com/Everplay-Tech/noldorian"
   url "https://github.com/Everplay-Tech/noldorian.git", branch: "main"
   version "0.2.0"
-  license :cannot_represent # proprietary — © Everplay-Tech LLC
+  license "Apache-2.0"
 
   depends_on "python@3.12"
 

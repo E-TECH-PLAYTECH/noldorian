@@ -31,6 +31,14 @@ internal-evaluation-only until the applicable production and redistribution
 rights plus dependency review are recorded. Keyabra may bank the credential;
 that is not authorization to bundle the SDK into a customer product.
 
+For agent reuse, a plaintext Keyabra env-vault is not a sufficient isolation
+boundary. Agents query and invoke credentials through the root-owned
+[credential capability broker](SECURE_CAPABILITY_BROKER.md). The broker exposes
+providers, resource scopes, availability, and fixed operations—never values,
+custody paths, arbitrary commands, or a generic secret export. Legacy vault
+entries are agent-safe only after owner import into the broker and reviewed
+retirement of the plaintext source.
+
 ---
 
 ## Naming
@@ -44,7 +52,7 @@ Planned progression (operator tools, not spells):
 | Package | CLI | Role |
 |---------|-----|------|
 | `binabra` | `abra` | Bin-directory anchor — `source "$(abra sh)"` |
-| `keyabra` | `keyabra` | Secure token prompt → run command (PyPI upload, etc.). 0.2.0: **env-vaults** — 0600 files of `NAME=value` / `NAME__FILE=path` / `NAME__CMD=cmd` pointers, loaded in-process via `keyabra run --env-file` (canonical: `~/.config/keyabra/everplay-release.env`) |
+| `keyabra` | `keyabra` | Secure token prompt → run command plus the 0.3 agent capability broker. Legacy env-vaults remain owner/operator surfaces; agents use broker metadata and fixed operations. |
 | `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
 | `xabra` | `xabra` | Everplay app fetcher — `--app <name> --install/--update/--open` for direct-distribution (non-App-Store) apps; Gatekeeper-verified installs, JSON receipts at `~/.local/state/xabra/receipts/` |
 | `xalakazam` | `xalakazam` | **The orienter — callable memory.** `--deploy` / `--spells` print the embedded playbooks for installing + strategically using Noldorian and the snx spellbook on any machine; `--bootstrap` prints the one-liners |
@@ -71,18 +79,19 @@ Source lives in `~/Projects/<name>/`, published separately from this repo.
 
 ---
 
-## Licensing & gatekeeping
+## Licensing and publication boundary
 
-Noldorian packages are **proprietary** — Copyright © 2026 Everplay-Tech LLC. Same
-stance as this spellbook ([LICENSE](LICENSE)).
+The generic Noldorian implementation is open source under the
+[Apache License 2.0](LICENSE). Public code includes the protocol, clients,
+operator tools, broker implementation, fixed adapters, and installation logic.
 
-PyPI.org is a **public index** — `pip install` still works for anyone, but
-**legal use requires permission**. Proprietary on PyPI is notice, not a download gate.
+Live credentials, capability grants, account identifiers, authorized-machine
+policy, and customer configuration are local state and are never packaged.
+Provider components with incompatible or restricted licenses remain outside
+the public distribution until redistribution rights are recorded.
 
-**True gatekeeping** (when needed): private index (Gemfury, CodeArtifact, devpi) or
-`pip install git+ssh://...` from private repos — do not rely on PyPI alone.
-
-**Upload tokens:** scope per project at https://pypi.org/manage/account/token/
+Public PyPI releases use Trusted Publishing with short-lived OIDC credentials;
+long-lived upload tokens do not belong in repositories or release workflows.
 
 ---
 
