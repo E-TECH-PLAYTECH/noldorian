@@ -155,3 +155,20 @@ macOS Security framework in process. It never appears in command arguments,
 the child environment, or the JSON receipt. The optional codesign probe proves
 that a headless process can actually use the named identity; an unlock without
 usable private-key access is not reported as success.
+
+## Agent-safe capability broker
+
+The root-owned Noldorian broker separates credential custody from agent use.
+Agents can list public capability metadata and invoke only fixed, typed
+operations; there is no credential export, arbitrary shell, or raw HTTP tool.
+
+```bash
+keyabra broker list
+keyabra broker describe openai.tunnel.admin
+keyabra broker invoke openai.tunnel.admin tunnels.list \
+  --arguments-json '{"organization_ids":["org_example"]}'
+```
+
+Enrollment and legacy-vault import require root peer authorization. See
+[`SECURE_CAPABILITY_BROKER.md`](../SECURE_CAPABILITY_BROKER.md) for the threat
+model, installer, and provider-adapter contract.

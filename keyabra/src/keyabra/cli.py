@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import shutil
@@ -29,6 +30,8 @@ from keyabra.discord_gcp import (
     store_discord_token_in_gcp,
 )
 from keyabra.macos_keychain import MacOSKeychainError, unlock_keychain_from_vault
+from keyabra.broker import BrokerError
+from keyabra.broker_client import BrokerClient, DEFAULT_SOCKET_PATH
 
 
 def _require(cmd: str) -> str:
@@ -620,6 +623,89 @@ def _cmd_macos_keychain(argv: list[str]) -> int:
     return 0
 
 
+def _cmd_broker(argv: list[str]) -> int:
+    """Query or owner-provision the Noldorian capability broker."""
+
+    socket_path = DEFAULT_SOCKET_PATH
+    args = list(argv)
+    if "--socket" in args:
+        index = args.index("--socket")
+        if index + 1 >= len(args):
+            print("keyabra: --socket needs a path", file=sys.stderr)
+            return 1
+        socket_path = Path(args[index + 1]).expanduser()
+        del args[index : index + 2]
+
+    sub = args[0] if args else "status"
+    client = BrokerClient(socket_path)
+    try:
+        if sub == "status":
+            result = client.status()
+        elif sub == "list":
+            result = client.list_capabilities()
+        elif sub == "describe" and len(args) == 2:
+            result = client.describe(args[1])
+        elif sub == "invoke" and len(args) >= 3:
+            arguments: dict[str, object] = {}
+            if "--arguments-json" in args:
+                index = args.index("--arguments-json")
+                if index + 1 >= len(args):
+                    raise BrokerError("--arguments-json needs a JSON object")
+                try:
+                    parsed = json.loads(args[index + 1])
+                except json.JSONDecodeError as exc:
+                    raise BrokerError("--arguments-json is invalid JSON") from exc
+                if not isinstance(parsed, dict):
+                    raise BrokerError("--arguments-json must decode to an object")
+                arguments = parsed
+            result = client.invoke(args[1], args[2], arguments)
+        elif sub == "register" and len(args) == 2:
+            spec_path = Path(args[1]).expanduser()
+            try:
+                spec = json.loads(spec_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise BrokerError("capability specification is unreadable or invalid") from exc
+            if not isinstance(spec, dict):
+                raise BrokerError("capability specification must be a JSON object")
+            result = client.request("register", capability=spec)
+        elif sub == "enroll" and len(args) == 2:
+            secret = prompt_secret(f"Credential for {args[1]}", confirm=True)
+            encoded = base64.b64encode(secret.encode("utf-8")).decode("ascii")
+            try:
+                result = client.request(
+                    "enroll", capability_id=args[1], secret_b64=encoded
+                )
+            finally:
+                secret = ""
+                encoded = ""
+        elif sub == "import-env" and len(args) == 4:
+            result = client.request(
+                "import_env",
+                capability_id=args[1],
+                env_file=str(Path(args[2]).expanduser().resolve()),
+                env_name=args[3],
+            )
+        else:
+            print(
+                "usage:\n"
+                "  keyabra broker status|list [--socket PATH]\n"
+                "  keyabra broker describe CAPABILITY [--socket PATH]\n"
+                "  keyabra broker invoke CAPABILITY OPERATION "
+                "[--arguments-json OBJECT] [--socket PATH]\n"
+                "  sudo keyabra broker register SPEC.json [--socket PATH]\n"
+                "  sudo keyabra broker enroll CAPABILITY [--socket PATH]\n"
+                "  sudo keyabra broker import-env CAPABILITY ENV_FILE ENV_NAME "
+                "[--socket PATH]",
+                file=sys.stderr,
+            )
+            return 1
+    except BrokerError as exc:
+        print(f"keyabra: {exc}", file=sys.stderr)
+        return 1
+    print(json.dumps(result, indent=2, sort_keys=True))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
@@ -644,6 +730,8 @@ def main(argv: list[str] | None = None) -> int:
                                      Secret Manager via stdin → readback + postflight
   keyabra macos-keychain unlock ...  0600 vault → in-process keychain unlock →
                                      optional headless codesign proof
+  keyabra broker list|describe ...   query credential capabilities; never values
+  keyabra broker invoke CAP OP ...   run one fixed, policy-approved operation
 
 Vault lines: NAME=value · NAME__FILE=/path (contents at run time) ·
 NAME__CMD=cmd (stdout at run time). Vault must be 0600 or keyabra refuses.
@@ -684,6 +772,9 @@ Examples:
 
     if argv[0] == "macos-keychain":
         return _cmd_macos_keychain(argv[1:])
+
+    if argv[0] == "broker":
+        return _cmd_broker(argv[1:])
 
     print(f"keyabra: unknown command '{argv[0]}' (try: keyabra help)", file=sys.stderr)
     return 1
