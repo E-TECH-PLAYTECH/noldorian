@@ -79,18 +79,19 @@ Source lives in `~/Projects/<name>/`, published separately from this repo.
 
 ---
 
-## Licensing & gatekeeping
+## Licensing and publication boundary
 
-Noldorian packages are **proprietary** — Copyright © 2026 Everplay-Tech LLC. Same
-stance as this spellbook ([LICENSE](LICENSE)).
+The generic Noldorian implementation is open source under the
+[Apache License 2.0](LICENSE). Public code includes the protocol, clients,
+operator tools, broker implementation, fixed adapters, and installation logic.
 
-PyPI.org is a **public index** — `pip install` still works for anyone, but
-**legal use requires permission**. Proprietary on PyPI is notice, not a download gate.
+Live credentials, capability grants, account identifiers, authorized-machine
+policy, and customer configuration are local state and are never packaged.
+Provider components with incompatible or restricted licenses remain outside
+the public distribution until redistribution rights are recorded.
 
-**True gatekeeping** (when needed): private index (Gemfury, CodeArtifact, devpi) or
-`pip install git+ssh://...` from private repos — do not rely on PyPI alone.
-
-**Upload tokens:** scope per project at https://pypi.org/manage/account/token/
+Public PyPI releases use Trusted Publishing with short-lived OIDC credentials;
+long-lived upload tokens do not belong in repositories or release workflows.
 
 ---
 

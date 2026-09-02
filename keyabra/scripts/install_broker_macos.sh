@@ -10,7 +10,7 @@ KEYABRA_ROOT="${SCRIPT_DIR:h}"
 BROKER_USER="${SUDO_USER:-}"
 TUNNEL_CLIENT_BIN="/opt/homebrew/Cellar/tunnel-client/0.0.13/libexec/tunnel-client"
 PYTHON_BIN="/usr/bin/python3"
-CAPABILITY_SPEC="$KEYABRA_ROOT/examples/openai-tunnel-admin.capability.json"
+CAPABILITY_SPEC=""
 
 while (( $# > 0 )); do
   case "$1" in
@@ -53,7 +53,7 @@ if [[ ! -x "$PYTHON_BIN" ]]; then
   print -u2 "python is not executable: $PYTHON_BIN"
   exit 2
 fi
-if [[ ! -f "$CAPABILITY_SPEC" ]]; then
+if [[ -n "$CAPABILITY_SPEC" && ! -f "$CAPABILITY_SPEC" ]]; then
   print -u2 "capability specification does not exist: $CAPABILITY_SPEC"
   exit 2
 fi
@@ -141,22 +141,28 @@ if [[ ! -S "$SOCKET_PATH" ]]; then
   exit 1
 fi
 
-REGISTER_RESPONSE="$(
-  /usr/bin/jq -c \
-    '{id:"install-default-capability",action:"register",capability:.}' \
-    "$CAPABILITY_SPEC" |
-    /usr/bin/nc -U "$SOCKET_PATH"
-)"
-if ! print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -e '.ok == true' >/dev/null; then
-  print -u2 "broker rejected the default capability specification"
-  print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -c '{ok,error}' >&2
-  exit 1
+REGISTERED_CAPABILITY=""
+if [[ -n "$CAPABILITY_SPEC" ]]; then
+  REGISTER_RESPONSE="$(
+    /usr/bin/jq -c \
+      '{id:"install-capability",action:"register",capability:.}' \
+      "$CAPABILITY_SPEC" |
+      /usr/bin/nc -U "$SOCKET_PATH"
+  )"
+  if ! print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -e '.ok == true' >/dev/null; then
+    print -u2 "broker rejected the capability specification"
+    print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -c '{ok,error}' >&2
+    exit 1
+  fi
+  REGISTERED_CAPABILITY="$(
+    print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -r '.result.id'
+  )"
 fi
 
 print "noldorian-key-broker installed"
 print "socket=$SOCKET_PATH"
 print "allowed_uid=$BROKER_UID"
 print "state=$STATE_DIR"
-print "registered_capability=$(
-  print -r -- "$REGISTER_RESPONSE" | /usr/bin/jq -r '.result.id'
-)"
+if [[ -n "$REGISTERED_CAPABILITY" ]]; then
+  print "registered_capability=$REGISTERED_CAPABILITY"
+fi

@@ -1,6 +1,6 @@
 # binabra
 
-Proprietary — Copyright © 2026 Everplay-Tech LLC. See [LICENSE](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).
 
 Portable **bin directory anchor** for shell scripts. Install once, reuse the same header anywhere.
 

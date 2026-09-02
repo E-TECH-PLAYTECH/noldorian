@@ -3,14 +3,12 @@
 # bootstrap.sh — install Everplay Noldorian CLIs (and optionally the snx
 # spellbook) on any machine or cloud container with bash + python3 + git.
 #
-# Auth: an authenticated `gh` CLI, or GITHUB_TOKEN/GH_TOKEN in the env.
+# Noldorian itself is public and needs no GitHub credential. `--spells` also
+# clones the separate private spellbook and therefore requires authenticated
+# `gh` (the GH_TOKEN/GITHUB_TOKEN environment variables are supported by gh).
 #
-#   with gh:            bash <(gh api -H "Accept: application/vnd.github.raw" \
-#                         repos/E-TECH-PLAYTECH/noldorian/contents/bootstrap.sh) [--all] [--spells]
-#   with a token only:  curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
-#                         -H "Accept: application/vnd.github.raw" \
-#                         https://api.github.com/repos/E-TECH-PLAYTECH/noldorian/contents/bootstrap.sh \
-#                         | bash -s -- --all
+#   curl -fsSL https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \
+#     | bash -s -- --all
 #
 # Default: keyabra + xalakazam (the secrets tool and the orienter).
 #   --all      also xadabra, binabra, xabra
@@ -25,32 +23,27 @@ set -euo pipefail
 
 REPO="E-TECH-PLAYTECH/noldorian"
 SPELLS_REPO="E-TECH-PLAYTECH/spells"
-PKGS=(keyabra xalakazam)
+PKGS=(noldorian keyabra xalakazam)
 WANT_SPELLS=0
 for a in "$@"; do
   case "$a" in
-    --all)    PKGS=(keyabra xalakazam xadabra binabra xabra) ;;
+    --all)    PKGS=(noldorian keyabra xalakazam xadabra binabra xabra) ;;
     --spells) WANT_SPELLS=1 ;;
     *) echo "bootstrap: unknown flag $a (valid: --all --spells)" >&2; exit 1 ;;
   esac
 done
 
-# --- auth -------------------------------------------------------------
-TOKEN="${GITHUB_TOKEN:-${GH_TOKEN:-}}"
-if [ -z "$TOKEN" ] && command -v gh >/dev/null 2>&1; then
-  TOKEN="$(gh auth token 2>/dev/null || true)"
-fi
-if [ -z "$TOKEN" ]; then
-  echo "bootstrap: no GitHub auth — set GITHUB_TOKEN or run 'gh auth login'" >&2
-  exit 1
-fi
-URL="https://x-access-token:${TOKEN}@github.com/${REPO}.git"
+URL="https://github.com/${REPO}.git"
 
 # --- noldorian CLIs ----------------------------------------------------
 PY="$(command -v python3)"
 echo "== installing: ${PKGS[*]} (user site) =="
 for p in "${PKGS[@]}"; do
-  "$PY" -m pip install --user --quiet "git+${URL}#subdirectory=${p}" \
+  SPEC="git+${URL}"
+  if [ "$p" != "noldorian" ]; then
+    SPEC="${SPEC}#subdirectory=${p}"
+  fi
+  "$PY" -m pip install --user --quiet "$SPEC" \
     && echo "  ${p}: ok" || { echo "  ${p}: FAILED" >&2; exit 1; }
 done
 
@@ -63,8 +56,12 @@ esac
 # --- spellbook (optional) ---------------------------------------------
 if [ "$WANT_SPELLS" = 1 ]; then
   if [ ! -d "$HOME/spells/.git" ]; then
+    if ! command -v gh >/dev/null 2>&1 || ! gh auth status >/dev/null 2>&1; then
+      echo "bootstrap: --spells requires authenticated gh (run 'gh auth login')" >&2
+      exit 1
+    fi
     echo "== cloning spellbook to ~/spells =="
-    git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/${SPELLS_REPO}.git" "$HOME/spells"
+    gh repo clone "$SPELLS_REPO" "$HOME/spells" -- --depth 1
   else
     echo "== spellbook already at ~/spells =="
   fi

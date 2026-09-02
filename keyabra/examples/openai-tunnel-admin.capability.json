@@ -1,6 +1,6 @@
 {
   "adapter": "openai_tunnel_admin",
-  "description": "Manage OpenAI Secure MCP Tunnels for the Everplay ChatGPT workspace",
+  "description": "Manage OpenAI Secure MCP Tunnels for an approved workspace",
   "id": "openai.tunnel.admin",
   "operations": [
     "tunnels.create",
@@ -11,10 +11,10 @@
   "provider": "openai",
   "resources": {
     "organization_ids": [
-      "org-CqYyjWauUcxyMSytiyikKFf6"
+      "org_example"
     ],
     "workspace_ids": [
-      "9880f9d6-7d79-4a52-9013-51dd3edc3aa8"
+      "workspace_example"
     ]
   }
 }

@@ -8,7 +8,7 @@ version = "0.3.0"
 description = "Human-gated secret intake and agent-safe credential capability brokering"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "LicenseRef-Proprietary"
+license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Everplay-Tech LLC" }]
 keywords = ["token", "secret", "pypi", "twine", "credentials", "cli", "keyabra", "noldorian"]
@@ -16,7 +16,7 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
-  "License :: Other/Proprietary License",
+  "License :: OSI Approved :: Apache Software License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Topic :: Security",
@@ -28,7 +28,7 @@ dependencies = []
 keyabra = "keyabra.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/librarynth2/keyabra"
+Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/keyabra"]

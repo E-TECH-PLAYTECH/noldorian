@@ -93,16 +93,17 @@ sudo keyabra/scripts/install_broker_macos.sh --user "$USER"
 ```
 
 The installer creates a root-owned zipapp, trusted copy of the provider
-client, LaunchDaemon, state directory, and Unix socket. It also registers the
-included non-secret OpenAI tunnel policy. It does not enroll any key.
+client, LaunchDaemon, state directory, and Unix socket. It does not register a
+capability or enroll a key unless an owner supplies `--capability SPEC.json`.
 
 ## Owner enrollment
 
 To register or update another non-secret policy:
 
 ```bash
-sudo keyabra broker register \
-  keyabra/examples/openai-tunnel-admin.capability.json
+cp keyabra/examples/openai-tunnel-admin.capability.json /tmp/tunnel-policy.json
+# Edit the copied public placeholders, then:
+sudo keyabra broker register /tmp/tunnel-policy.json
 ```
 
 If the credential already exists in a legacy vault, import it by reference;

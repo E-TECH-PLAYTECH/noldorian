@@ -48,7 +48,9 @@ class CapabilitiesMcpTests(unittest.TestCase):
             thread.start()
             env = os.environ.copy()
             env["NOLDORIAN_BROKER_SOCKET"] = str(root / "broker.sock")
-            env["PYTHONPATH"] = str(KEYABRA_ROOT / "src")
+            env["PYTHONPATH"] = os.pathsep.join(
+                [str(NOLDORIAN_ROOT / "src"), str(KEYABRA_ROOT / "src")]
+            )
             process = subprocess.Popen(
                 [sys.executable, str(MCP_SERVER)],
                 stdin=subprocess.PIPE,

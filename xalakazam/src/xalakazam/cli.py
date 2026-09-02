@@ -126,8 +126,8 @@ def _cmd_enable(argv: list[str]) -> int:
 
 def _cmd_cursor_sdk_enable(argv: list[str]) -> int:
     """Open Cursor's key surface, then hand secure intake to Keyabra."""
-    project = "everplay-centaur-chess"
-    secret = "everplay-cursor-sdk-api-key"
+    project = ""
+    secret = ""
     url = CURSOR_API_KEY_URL
     no_open = False
     i = 0
@@ -151,6 +151,12 @@ def _cmd_cursor_sdk_enable(argv: list[str]) -> int:
     keyabra = shutil.which("keyabra")
     if not keyabra:
         print("xalakazam: keyabra not on PATH — install it, then rerun", file=sys.stderr)
+        return 1
+    if not project or not secret:
+        print(
+            "xalakazam: --project and --secret are required for credential storage",
+            file=sys.stderr,
+        )
         return 1
 
     print("xalakazam: opening Cursor Cloud Agents → User API Keys.")

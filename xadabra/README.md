@@ -1,6 +1,6 @@
 # xadabra
 
-Proprietary — Copyright © 2026 Everplay-Tech LLC. See [LICENSE](LICENSE).
+Licensed under the [Apache License 2.0](LICENSE).
 
 Paste-once runner for AI shell blocks. No more hand-editing `{{placeholders}}` in command blocks.
 

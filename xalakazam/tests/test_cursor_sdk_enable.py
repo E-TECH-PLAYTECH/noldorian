@@ -23,7 +23,15 @@ class CursorSdkEnableTests(unittest.TestCase):
 
         output = io.StringIO()
         with redirect_stdout(output):
-            result = _cmd_cursor_sdk_enable(["--no-open"])
+            result = _cmd_cursor_sdk_enable(
+                [
+                    "--project",
+                    "example-project",
+                    "--secret",
+                    "example-cursor-api-key",
+                    "--no-open",
+                ]
+            )
 
         self.assertEqual(result, 0)
         self.assertIn("Internal evaluation only", output.getvalue())
@@ -34,9 +42,9 @@ class CursorSdkEnableTests(unittest.TestCase):
                 "cursor",
                 "gcp-store",
                 "--project",
-                "everplay-centaur-chess",
+                "example-project",
                 "--secret",
-                "everplay-cursor-sdk-api-key",
+                "example-cursor-api-key",
             ],
             check=False,
         )
