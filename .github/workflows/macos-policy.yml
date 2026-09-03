@@ -1,0 +1,32 @@
+name: Organization hosted-Linux/Windows policy
+
+on:
+  pull_request:
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-policy-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runner-policy:
+    name: No hosted macOS routes
+    # This job audits workflow source only; it does not need Mac capability.
+    # Keep the control-plane check independent of the customer Mac fleet.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out target repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          persist-credentials: false
+
+      - name: Enforce hosted Linux/Windows policy
+        uses: E-TECH-PLAYTECH/ci-policy@policy-action-v9
+        with:
+          root: .
+          repository: ${{ github.repository }}
+          mode: hosted-linux-windows-break-glass
