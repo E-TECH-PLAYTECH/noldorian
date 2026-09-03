@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "noldorian"
-version = "0.1.0"
+version = "0.2.0"
 description = "Agent-safe discovery and policy-bound use of local credential capabilities"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -28,6 +28,11 @@ dependencies = []
 [project.scripts]
 noldorian = "noldorian.cli:main"
 noldorian-mcp = "noldorian.mcp:main"
+keyabra = "keyabra.cli:main"
+xadabra = "xadabra.cli:main"
+xabra = "xabra.cli:main"
+abra = "binabra.cli:main"
+xalakazam = "xalakazam.cli:main"
 
 [project.urls]
 Documentation = "https://github.com/E-TECH-PLAYTECH/noldorian#readme"
@@ -37,9 +42,23 @@ Repository = "https://github.com/E-TECH-PLAYTECH/noldorian"
 [tool.hatch.build.targets.wheel]
 packages = ["src/noldorian"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"keyabra/src/keyabra" = "keyabra"
+"xadabra/src/xadabra" = "xadabra"
+"xabra/src/xabra" = "xabra"
+"binabra/src/binabra" = "binabra"
+"xalakazam/src/xalakazam" = "xalakazam"
+"keyabra/scripts/install_broker_macos.sh" = "noldorian/install_broker_macos.sh"
+
 [tool.hatch.build.targets.sdist]
 include = [
   "/src/noldorian",
+  "/keyabra/src/keyabra",
+  "/keyabra/scripts/install_broker_macos.sh",
+  "/xadabra/src/xadabra",
+  "/xabra/src/xabra",
+  "/binabra/src/binabra",
+  "/xalakazam/src/xalakazam",
   "/tests",
   "/README.md",
   "/LICENSE",

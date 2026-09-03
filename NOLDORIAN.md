@@ -1,19 +1,22 @@
 # Noldorian — the PyPI / High-Elven tier
 
-**Noldorian** packages are portable, pip-installable CLI libraries. They sit in the
-[Rosetta layer](README.md#the-doctrine--why-spells-save-tokens) beside spells — same
-*kind* of problem (deterministic tooling for humans and agents), different *contract*.
+**Noldorian** is the portable, pip-installable boundary for human-gated
+credentials and deterministic operator tooling. It sits in the [Rosetta
+layer](README.md#the-doctrine--why-spells-save-tokens) beside spells.
 
 | Tier | Invocation | Registry | Interactive? | Network? |
 |------|------------|----------|--------------|----------|
 | **Spell** | `snx <name>` | `snx list` / discovery | **No** — flags/env only | Usually local |
 | **Snack** | `snx <name>` | discovery (`kind: snx`) | No | Read-only digest |
 | **Incantation** | `snx incantu --kuru "..."` | Esperanto → spell | No | Routes locally |
-| **Noldorian** | `<cli>` after `pip install` | PyPI | **Yes** (when designed for it) | Optional |
+| **Noldorian** | `noldorian` after `pip install` | PyPI | Human gate only where explicitly invoked | Optional |
 
 **Spells are for agents.** Receipt-bearing, JSON out, no prompts, no judgment holes unless
-a **Rite**. **Noldorian is for operators** — paste-once runners, token prompts, bin
-anchors: human-in-the-loop glue that agents should not pretend to be spells.
+a **Rite**. **Noldorian's agent surface is deliberately narrow**: agents can ask
+the broker to begin a reviewed human enrollment, inspect non-secret metadata,
+and invoke fixed operations. The bundled operator tools retain their prompts,
+clipboard, installer, and orientation duties behind their operator-facing
+commands.
 
 Do **not** register Noldorian packages in `snx discovery`. Agents: cast `snx` for spells;
 `pip install` Noldorian when the covenant or task calls for portable CLI libs.
@@ -52,19 +55,22 @@ Planned progression (operator tools, not spells):
 | Package | CLI | Role |
 |---------|-----|------|
 | `binabra` | `abra` | Bin-directory anchor — `source "$(abra sh)"` |
-| `keyabra` | `keyabra` | Secure token prompt → run command plus the 0.3 agent capability broker. Legacy env-vaults remain owner/operator surfaces; agents use broker metadata and fixed operations. |
-| `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}` |
-| `xabra` | `xabra` | Everplay app fetcher — `--app <name> --install/--update/--open` for direct-distribution (non-App-Store) apps; Gatekeeper-verified installs, JSON receipts at `~/.local/state/xabra/receipts/` |
-| `xalakazam` | `xalakazam` | **The orienter — callable memory.** `--deploy` / `--spells` print the embedded playbooks for installing + strategically using Noldorian and the snx spellbook on any machine; `--bootstrap` prints the one-liners |
+| `keyabra` | `keyabra` | Compatibility operator surface; the broker and human enrollment implementation are bundled by `noldorian`. |
+| `xadabra` | `xadabra` | Clipboard/stdin script runner with `{{placeholders}}`, bundled by `noldorian`. |
+| `xabra` | `xabra` | Verified direct-distribution app installer, bundled by `noldorian`. |
+| `xalakazam` | `xalakazam` | Operator orientation and deployment playbooks, bundled by `noldorian`. |
 
-Source lives in `~/Projects/<name>/`, published separately from this repo.
+The family source remains organized in its subdirectories, but one `noldorian`
+distribution now installs the complete family and its compatibility entrypoints.
 
 ---
 
 ## Deploy anywhere
 
 - **Bootstrap (any bash + python3 + git):** `bootstrap.sh` at repo root — auth via `gh` or `GITHUB_TOKEN`, pip user-installs the CLIs, `--all` for every package, `--spells` also clones the spellbook + `snx` shim. Works in cloud containers (Claude Code web): pipe it through curl with a `GITHUB_TOKEN` — see `xalakazam --bootstrap`.
-- **MCP:** `mcp/noldorian_mcp.py` — zero-dependency stdio server (tools: `orient`, `install_noldorian`, `install_spells`, `doctor`); register with `claude mcp add noldorian -- python3 …/mcp/noldorian_mcp.py` and any MCP-capable agent can self-serve the playbooks and installs.
+- **MCP:** `noldorian-mcp` — zero-dependency stdio server for broker status,
+  reviewed human enrollment, enrollment status, capability metadata, and fixed
+  operations.
 - **Homebrew (macOS):** this repo doubles as a tap — `brew tap everplay-tech/noldorian https://github.com/Everplay-Tech/noldorian.git && brew install everplay-tech/noldorian/noldorian` (`Formula/noldorian.rb`; scaffold — pip/bootstrap is the proven path). No cask: these are CLIs, not app bundles.
 
 ---

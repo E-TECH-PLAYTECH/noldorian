@@ -38,7 +38,15 @@ class BrokerClient:
         self.timeout = timeout
 
     def _request(self, action: str, **params: Any) -> Dict[str, Any]:
-        if action not in {"status", "list", "describe", "invoke"}:
+        if action not in {
+            "status",
+            "list",
+            "list_enrollment_templates",
+            "describe",
+            "invoke",
+            "request_enrollment",
+            "enrollment_status",
+        }:
             raise BrokerError(f"unsupported public broker action: {action}")
         request_id = uuid.uuid4().hex
         payload = {"id": request_id, "action": action, **params}
@@ -90,6 +98,11 @@ class BrokerClient:
 
         return self._request("list")
 
+    def list_enrollment_templates(self) -> Dict[str, Any]:
+        """Return reviewed enrollment templates without adapter or secret data."""
+
+        return self._request("list_enrollment_templates")
+
     def describe(self, capability_id: str) -> Dict[str, Any]:
         """Describe one capability without exposing its custody details."""
 
@@ -115,3 +128,38 @@ class BrokerClient:
             operation=operation,
             arguments=dict(arguments or {}),
         )
+
+    def request_enrollment(
+        self,
+        template_id: str,
+        purpose: str,
+        *,
+        capability_id: Optional[str] = None,
+        operations: Optional[list[str]] = None,
+        resources: Optional[Mapping[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Ask the broker to start an owner-only enrollment prompt.
+
+        This method accepts policy metadata only.  It has no parameter for a
+        credential value and returns only enrollment status and public data.
+        """
+
+        if not template_id.strip():
+            raise ValueError("template_id must not be empty")
+        if not purpose.strip():
+            raise ValueError("purpose must not be empty")
+        params: Dict[str, Any] = {"template_id": template_id, "purpose": purpose}
+        if capability_id is not None:
+            params["capability_id"] = capability_id
+        if operations is not None:
+            params["operations"] = list(operations)
+        if resources is not None:
+            params["resources"] = dict(resources)
+        return self._request("request_enrollment", **params)
+
+    def enrollment_status(self, request_id: str) -> Dict[str, Any]:
+        """Return non-secret status for one owner enrollment request."""
+
+        if not request_id.strip():
+            raise ValueError("request_id must not be empty")
+        return self._request("enrollment_status", request_id=request_id)

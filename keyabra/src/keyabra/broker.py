@@ -15,25 +15,42 @@ can be tested without root privileges.
 from __future__ import annotations
 
 import base64
+import datetime as _datetime
 import json
 import os
 import re
 import stat
 import subprocess
 import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional
 from urllib.parse import quote
 
 
 CATALOG_SCHEMA = "noldorian.key-capabilities/v1"
+ENROLLMENT_SCHEMA = "noldorian.enrollment-request/v1"
+ENROLLMENT_TEMPLATES_SCHEMA = "noldorian.enrollment-templates/v1"
 CAPABILITY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
+ENROLLMENT_ID_RE = re.compile(r"^enroll_[a-f0-9]{32}$")
 TUNNEL_ID_RE = re.compile(r"^tunnel_[A-Za-z0-9]+$")
 SENSITIVE_FIELD_RE = re.compile(
     r"(?:secret|token|password|credential|api[_-]?key|authorization)", re.IGNORECASE
 )
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{1,127}$")
 MAX_SECRET_BYTES = 64 * 1024
+
+# Agent requests select a reviewed template; they never provide an adapter or
+# an arbitrary operation.  The owner still sees the exact scope and operation
+# set in the human gate before a credential is accepted.
+CAPABILITY_TEMPLATES = {
+    "openai.tunnel.admin": {
+        "provider": "openai",
+        "description": "Manage OpenAI Secure MCP Tunnels for an approved workspace",
+        "adapter": "openai_tunnel_admin",
+        "operations": ["tunnels.create", "tunnels.get", "tunnels.list"],
+    },
+}
 
 
 class BrokerError(RuntimeError):
@@ -271,12 +288,15 @@ class CapabilityStore:
         self.state_dir = Path(state_dir).expanduser().resolve()
         self.catalog_path = self.state_dir / "capabilities.json"
         self.secrets_dir = self.state_dir / "secrets"
+        self.enrollment_dir = self.state_dir / "enrollment-requests"
 
     def initialize(self) -> None:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.secrets_dir.mkdir(parents=True, exist_ok=True)
+        self.enrollment_dir.mkdir(parents=True, exist_ok=True)
         _chmod_exact(self.state_dir, 0o700)
         _chmod_exact(self.secrets_dir, 0o700)
+        _chmod_exact(self.enrollment_dir, 0o700)
         if not self.catalog_path.exists():
             self._write_catalog({"schema": CATALOG_SCHEMA, "capabilities": {}})
         else:
@@ -353,6 +373,194 @@ class CapabilityStore:
         catalog["capabilities"][clean["id"]] = clean
         self._write_catalog(catalog)
         return self.describe(clean["id"])
+
+    @staticmethod
+    def list_enrollment_templates() -> Dict[str, Any]:
+        """Return the reviewed enrollment templates without internal adapters."""
+
+        templates = []
+        for template_id in sorted(CAPABILITY_TEMPLATES):
+            template = CAPABILITY_TEMPLATES[template_id]
+            templates.append(
+                {
+                    "template_id": template_id,
+                    "provider": template["provider"],
+                    "description": template["description"],
+                    "operations": sorted(template["operations"]),
+                }
+            )
+        return {
+            "schema": ENROLLMENT_TEMPLATES_SCHEMA,
+            "templates": templates,
+        }
+
+    def _enrollment_path(self, request_id: str) -> Path:
+        if not ENROLLMENT_ID_RE.fullmatch(request_id):
+            raise BrokerError("invalid enrollment request id")
+        return self.enrollment_dir / f"{request_id}.json"
+
+    @staticmethod
+    def _timestamp() -> str:
+        return (
+            _datetime.datetime.now(_datetime.timezone.utc)
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+
+    def _write_enrollment(self, request: Mapping[str, Any]) -> None:
+        request_id = str(request.get("request_id", ""))
+        path = self._enrollment_path(request_id)
+        payload = (json.dumps(request, indent=2, sort_keys=True) + "\n").encode("utf-8")
+        _atomic_write(path, payload, 0o600)
+
+    def _load_enrollment(self, request_id: str) -> MutableMapping[str, Any]:
+        path = self._enrollment_path(request_id)
+        self.initialize()
+        try:
+            request = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise BrokerError("enrollment request is unreadable or invalid") from exc
+        if not isinstance(request, dict) or request.get("schema") != ENROLLMENT_SCHEMA:
+            raise BrokerError("enrollment request has an unsupported schema")
+        return request
+
+    def _public_enrollment(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        capability_id = str(request.get("capability_id", ""))
+        result: Dict[str, Any] = {
+            "schema": ENROLLMENT_SCHEMA,
+            "request_id": request.get("request_id"),
+            "capability_id": capability_id,
+            "provider": request.get("provider"),
+            "status": request.get("status"),
+            "purpose": request.get("purpose"),
+            "created_at": request.get("created_at"),
+            "updated_at": request.get("updated_at"),
+        }
+        error_code = request.get("error_code")
+        if error_code:
+            result["error"] = error_code
+        if capability_id:
+            try:
+                result["capability"] = self.describe(capability_id)
+            except BrokerError:
+                pass
+        return result
+
+    def find_open_enrollment(self, capability_id: str) -> Optional[Dict[str, Any]]:
+        """Return the newest non-terminal request for *capability_id*, if any."""
+
+        self.initialize()
+        matches: List[Dict[str, Any]] = []
+        for path in self.enrollment_dir.glob("enroll_*.json"):
+            try:
+                request = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if not isinstance(request, dict):
+                continue
+            if request.get("capability_id") != capability_id:
+                continue
+            if request.get("status") in {
+                "awaiting_human",
+                "prompt_opened",
+                "prompting",
+            }:
+                matches.append(request)
+        if not matches:
+            return None
+        return max(matches, key=lambda item: str(item.get("updated_at", "")))
+
+    def prepare_enrollment(self, args: Mapping[str, Any]) -> Dict[str, Any]:
+        """Validate a non-secret agent request against a reviewed template."""
+
+        allowed_fields = {"template_id", "capability_id", "purpose", "operations", "resources"}
+        unknown_fields = sorted(set(args) - allowed_fields)
+        if unknown_fields:
+            raise BrokerError(
+                "enrollment request contains unsupported fields: "
+                + ", ".join(unknown_fields)
+            )
+
+        template_id = _require_text(args, "template_id", max_length=128)
+        template = CAPABILITY_TEMPLATES.get(template_id)
+        if template is None:
+            raise BrokerError(f"unknown enrollment template: {template_id}")
+
+        capability_id = args.get("capability_id", template_id)
+        if not isinstance(capability_id, str) or not CAPABILITY_ID_RE.fullmatch(capability_id):
+            raise BrokerError("capability_id has an invalid shape")
+        purpose = _require_text(args, "purpose", max_length=500)
+
+        resources = args.get("resources", {})
+        if not isinstance(resources, dict):
+            raise BrokerError("resources must be an object")
+        _validate_public_metadata(resources)
+
+        requested_operations = _string_list(args, "operations")
+        operations = requested_operations or list(template["operations"])
+        if not set(operations).issubset(set(template["operations"])):
+            raise BrokerError("requested operation is not allowed by the enrollment template")
+
+        spec = {
+            "id": capability_id,
+            "provider": template["provider"],
+            "description": template["description"],
+            "adapter": template["adapter"],
+            "operations": operations,
+            "resources": resources,
+            "owner_note": "Created only after explicit human enrollment approval.",
+        }
+        # Run the normal catalog validator before showing anything to the owner.
+        clean_spec = self._validate_spec(spec)
+        return {
+            "schema": ENROLLMENT_SCHEMA,
+            "request_id": f"enroll_{uuid.uuid4().hex}",
+            "capability_id": capability_id,
+            "provider": clean_spec["provider"],
+            "description": clean_spec["description"],
+            "operations": clean_spec["operations"],
+            "resources": clean_spec["resources"],
+            "purpose": purpose,
+            "status": "awaiting_human",
+            "created_at": self._timestamp(),
+            "updated_at": self._timestamp(),
+            "spec": clean_spec,
+        }
+
+    def create_enrollment(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        self.initialize()
+        self._write_enrollment(request)
+        return self._public_enrollment(request)
+
+    def update_enrollment(
+        self,
+        request_id: str,
+        status: str,
+        *,
+        error_code: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        request = self._load_enrollment(request_id)
+        if status not in {
+            "awaiting_human",
+            "prompt_opened",
+            "prompting",
+            "enrolled",
+            "cancelled",
+            "failed",
+        }:
+            raise BrokerError("invalid enrollment status")
+        request["status"] = status
+        request["updated_at"] = self._timestamp()
+        if error_code:
+            request["error_code"] = error_code
+        else:
+            request.pop("error_code", None)
+        self._write_enrollment(request)
+        return self._public_enrollment(request)
+
+    def enrollment_status(self, request_id: str) -> Dict[str, Any]:
+        return self._public_enrollment(self._load_enrollment(request_id))
 
     def _secret_path(self, capability_id: str) -> Path:
         if not CAPABILITY_ID_RE.fullmatch(capability_id):

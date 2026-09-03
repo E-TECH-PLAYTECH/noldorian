@@ -20,6 +20,12 @@ class StubClient(BrokerClient):
     def list_capabilities(self) -> dict[str, object]:
         return {"capabilities": [{"id": "example.capability", "available": True}]}
 
+    def list_enrollment_templates(self) -> dict[str, object]:
+        return {
+            "schema": "noldorian.enrollment-templates/v1",
+            "templates": [{"template_id": "openai.tunnel.admin", "operations": []}],
+        }
+
     def describe(self, capability_id: str) -> dict[str, object]:
         return {"id": capability_id, "available": True}
 
@@ -35,11 +41,40 @@ class StubClient(BrokerClient):
             "arguments": arguments or {},
         }
 
+    def request_enrollment(
+        self,
+        template_id: str,
+        purpose: str,
+        *,
+        capability_id: str | None = None,
+        operations: list[str] | None = None,
+        resources: dict[str, object] | None = None,
+    ) -> dict[str, object]:
+        return {
+            "request_id": "enroll_example",
+            "status": "prompt_opened",
+            "template_id": template_id,
+            "purpose": purpose,
+            "capability_id": capability_id or template_id,
+            "operations": operations or [],
+            "resources": resources or {},
+        }
+
+    def enrollment_status(self, request_id: str) -> dict[str, object]:
+        return {"request_id": request_id, "status": "enrolled"}
+
 
 class PublicSurfaceTests(unittest.TestCase):
     def test_client_refuses_owner_and_secret_actions(self) -> None:
         client = BrokerClient(Path("/tmp/not-used"))
-        for action in ("enroll", "register", "import_env", "get_secret", "shell"):
+        for action in (
+            "enroll",
+            "register",
+            "import_env",
+            "get_secret",
+            "shell",
+            "owner_prompt",
+        ):
             with self.assertRaises(BrokerError):
                 client._request(action)
 
@@ -50,12 +85,15 @@ class PublicSurfaceTests(unittest.TestCase):
             {
                 "broker_status",
                 "list_credential_capabilities",
+                "list_credential_enrollment_templates",
                 "describe_credential_capability",
                 "invoke_credential_capability",
+                "request_credential_enrollment",
+                "get_credential_enrollment_status",
             },
         )
         serialized = json.dumps(TOOLS).lower()
-        for forbidden in ("enroll", "register", "get_secret", "clipboard", "shell"):
+        for forbidden in ("register", "get_secret", "clipboard", "shell", "secret value"):
             self.assertNotIn(forbidden, serialized)
 
     def test_mcp_round_trip_contains_no_internal_exception_detail(self) -> None:
@@ -84,6 +122,54 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertEqual(lines[0]["result"]["tools"], TOOLS)
         self.assertFalse(lines[1]["result"]["isError"])
         self.assertIn("example.run", lines[1]["result"]["content"][0]["text"])
+
+    def test_mcp_can_request_enrollment_without_accepting_a_credential(self) -> None:
+        requests = io.StringIO(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "request_credential_enrollment",
+                        "arguments": {
+                            "template_id": "openai.tunnel.admin",
+                            "purpose": "Studio Bridge administration",
+                        },
+                    },
+                }
+            )
+            + "\n"
+        )
+        responses = io.StringIO()
+        McpServer(StubClient()).serve(requests, responses)
+        response = json.loads(responses.getvalue())
+        self.assertFalse(response["result"]["isError"])
+        body = response["result"]["content"][0]["text"]
+        self.assertIn("prompt_opened", body)
+        self.assertNotIn("credential", body.lower())
+
+    def test_mcp_can_discover_reviewed_enrollment_templates(self) -> None:
+        requests = io.StringIO(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "list_credential_enrollment_templates",
+                        "arguments": {},
+                    },
+                }
+            )
+            + "\n"
+        )
+        responses = io.StringIO()
+        McpServer(StubClient()).serve(requests, responses)
+        response = json.loads(responses.getvalue())
+        self.assertFalse(response["result"]["isError"])
+        body = json.loads(response["result"]["content"][0]["text"])
+        self.assertEqual(body["templates"][0]["template_id"], "openai.tunnel.admin")
 
 
 if __name__ == "__main__":

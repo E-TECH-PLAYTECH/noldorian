@@ -10,10 +10,12 @@ import os
 import socket
 import socketserver
 import struct
+import sys
 from pathlib import Path
 from typing import Any, Dict, Optional, Set, Tuple
 
 from keyabra.broker import BrokerError, CapabilityBroker, CapabilityStore
+from keyabra.enrollment import EnrollmentCoordinator, HumanEnrollmentGate
 
 
 DEFAULT_STATE_DIR = Path("/Library/Application Support/NoldorianKeyBroker")
@@ -108,6 +110,10 @@ class BrokerDaemon(_ThreadingUnixServer):
         owner_uids: Set[int],
         socket_mode: int = 0o660,
         socket_gid: Optional[int] = None,
+        prompt_uid: Optional[int] = None,
+        prompt_python: Optional[str] = None,
+        prompt_app: Optional[str] = None,
+        enrollment_gate: Optional[HumanEnrollmentGate] = None,
     ) -> None:
         self.socket_path = Path(socket_path)
         self.broker = broker
@@ -115,6 +121,15 @@ class BrokerDaemon(_ThreadingUnixServer):
         self.owner_uids = set(owner_uids)
         self.socket_mode = socket_mode
         self.socket_gid = socket_gid
+        self.enrollment = EnrollmentCoordinator(
+            broker.store,
+            enrollment_gate
+            or HumanEnrollmentGate(
+                prompt_uid=prompt_uid,
+                prompt_python=prompt_python,
+                prompt_app=prompt_app,
+            ),
+        )
         if self.socket_path.exists():
             self.socket_path.unlink()
         self.socket_path.parent.mkdir(parents=True, exist_ok=True)
@@ -150,6 +165,8 @@ class BrokerDaemon(_ThreadingUnixServer):
             }
         if action == "list":
             return self.broker.list_capabilities()
+        if action == "list_enrollment_templates":
+            return self.broker.store.list_enrollment_templates()
         if action == "describe":
             return self.broker.describe_capability(str(request.get("capability_id", "")))
         if action == "invoke":
@@ -161,6 +178,17 @@ class BrokerDaemon(_ThreadingUnixServer):
                 str(request.get("operation", "")),
                 arguments,
             )
+
+        if action == "request_enrollment":
+            enrollment_args = {
+                key: value for key, value in request.items() if key not in {"id", "action"}
+            }
+            return self.enrollment.request(enrollment_args)
+        if action == "enrollment_status":
+            request_id = request.get("request_id")
+            if not isinstance(request_id, str) or not request_id.strip():
+                raise BrokerError("request_id is required")
+            return self.broker.store.enrollment_status(request_id)
 
         self._require_owner(uid)
         if action == "register":
@@ -198,10 +226,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--owner-uid", type=int, action="append", default=[0])
     parser.add_argument("--socket-gid", type=int)
     parser.add_argument("--socket-mode", default="0660")
+    parser.add_argument(
+        "--prompt-uid",
+        type=int,
+        help="desktop user UID that receives owner enrollment dialogs",
+    )
+    parser.add_argument("--prompt-python", help="root-trusted Python used for the owner dialog")
+    parser.add_argument("--prompt-app", help="root-trusted Noldorian zipapp used for the owner dialog")
     return parser
 
 
 def main(argv: Optional[list[str]] = None) -> int:
+    argv = list(argv if argv is not None else sys.argv[1:])
+    if argv and argv[0] == "--owner-prompt":
+        from keyabra.owner_prompt import main as owner_prompt_main
+
+        return owner_prompt_main()
+
     args = build_parser().parse_args(argv)
     try:
         socket_mode = int(args.socket_mode, 8)
@@ -217,6 +258,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         owner_uids=set(args.owner_uid),
         socket_mode=socket_mode,
         socket_gid=args.socket_gid,
+        prompt_uid=args.prompt_uid,
+        prompt_python=args.prompt_python,
+        prompt_app=args.prompt_app,
     )
     try:
         daemon.serve_forever(poll_interval=0.5)

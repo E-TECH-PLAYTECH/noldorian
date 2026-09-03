@@ -11,7 +11,7 @@ from pathlib import Path
 
 DEFAULT_ORG = "Everplay-Tech"
 DEFAULT_REPO = "noldorian"
-DEFAULT_TAG = "v0.1.1"
+DEFAULT_TAG = "v0.2.0"
 PACKAGES = ("binabra", "keyabra", "xadabra")
 PYPI_VERSIONS = ("0.1.0", "0.1.1")
 
@@ -41,18 +41,18 @@ def cmd_guide(_: argparse.Namespace) -> int:
     print(
         textwrap.dedent(
             f"""
-            xadabra noldorian — private GitHub walkthrough
+            xadabra noldorian — legacy release workflow
             =============================================
 
-            MANUAL (browser):
-              1. GitHub → Everplay-Tech → New private repo: {DEFAULT_REPO}
-              2. SSH key on GitHub if needed: ssh -T git@github.com
+            The normal install is the unified public distribution:
+              python3 -m pip install noldorian==0.2.0
+              # installs noldorian, keyabra, xadabra, xabra, abra, xalakazam
 
-            AUTOMATED (this tool):
+            Legacy source workflow (operator-only):
               xadabra noldorian pack          # scaffold ~/noldorian
-              xadabra noldorian push          # commit, tag, push (prompts org/repo)
-              xadabra noldorian install       # print pip install lines
-              xadabra noldorian yank          # yank public PyPI versions (token prompt)
+              xadabra noldorian push          # commit, tag, push
+              xadabra noldorian install       # print a pinned install command
+              xadabra noldorian yank          # legacy PyPI maintenance
               xadabra noldorian script        # paste-runner template for custom flow
 
             Or one paste block:
@@ -103,7 +103,7 @@ def cmd_pack(args: argparse.Namespace) -> int:
         lines = [
             "# Noldorian",
             "",
-            "Proprietary operator CLIs — Everplay-Tech LLC.",
+            "Unified Noldorian distribution — Everplay-Tech LLC.",
             "",
             "| Package | CLI |",
             "|---------|-----|",
@@ -115,15 +115,13 @@ def cmd_pack(args: argparse.Namespace) -> int:
         for pkg in PACKAGES:
             cli = cli_names[pkg]
             lines.append(f"| {pkg} | `{cli}` |")
-        lines += ["", "## Install (private GitHub)", ""]
-        for pkg in PACKAGES:
-            lines.append(
-                f'pip install "git+ssh://git@github.com/{org}/{repo}.git@{tag}#subdirectory={pkg}"'
-            )
+        lines += ["", "## Install (public unified package)", ""]
+        lines.append("python3 -m pip install noldorian==0.2.0")
+        lines.append("# Source pin for maintainers:")
+        lines.append(f'python3 -m pip install "git+ssh://git@github.com/{org}/{repo}.git@{tag}"')
         lines += [
             "",
-            "Public agent client: python3 -m pip install noldorian",
-            "Family packages may be installed from a pinned source tag.",
+            "The package also installs the family compatibility CLIs.",
             "",
         ]
         readme.write_text("\n".join(lines), encoding="utf-8")
@@ -223,6 +221,23 @@ def cmd_push(args: argparse.Namespace) -> int:
 
 
 def cmd_install(args: argparse.Namespace) -> int:
+    if args.package == "all":
+        line = "python3 -m pip install --user --force-reinstall noldorian==0.2.0"
+        print(line)
+        if args.run:
+            return _run(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "--user",
+                    "--force-reinstall",
+                    "noldorian==0.2.0",
+                ]
+            )
+        return 0
+
     org = args.org or _prompt("GitHub org", DEFAULT_ORG)
     repo = args.repo or _prompt("GitHub repo", DEFAULT_REPO)
     tag = args.tag or _prompt("Git tag", DEFAULT_TAG)
@@ -296,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(
         prog="xadabra noldorian",
-        description="Private GitHub monorepo workflow for Noldorian packages",
+        description="Legacy operator workflow for the unified Noldorian package",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -321,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=cmd_push)
 
-    p = sub.add_parser("install", help="print pip install lines from private GitHub")
+    p = sub.add_parser("install", help="print the unified noldorian install command")
     p.add_argument("--org", default=None)
     p.add_argument("--repo", default=None)
     p.add_argument("--tag", default=None)

@@ -162,6 +162,12 @@ The root-owned Noldorian broker separates credential custody from agent use.
 Agents can list public capability metadata and invoke only fixed, typed
 operations; there is no credential export, arbitrary shell, or raw HTTP tool.
 
+Agents should use the unified `noldorian` MCP server to discover reviewed
+enrollment templates and request the owner-only hidden prompt. The prompt
+returns the credential only to the root broker; the agent receives a request
+status and later invokes the named capability. The compatibility `keyabra`
+CLI remains available for owner-only registration and legacy import.
+
 ```bash
 keyabra broker list
 keyabra broker describe openai.tunnel.admin

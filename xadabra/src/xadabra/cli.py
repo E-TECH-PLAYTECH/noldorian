@@ -83,6 +83,10 @@ def run_pipeline(
 def main(argv: list[str] | None = None) -> int:
     argv = list(argv if argv is not None else sys.argv[1:])
 
+    if argv and argv[0] in ("--version", "-V", "version"):
+        print(f"xadabra {__version__}")
+        return 0
+
     if argv and argv[0] == "noldorian":
         from xadabra.noldorian import main as noldorian_main
 
