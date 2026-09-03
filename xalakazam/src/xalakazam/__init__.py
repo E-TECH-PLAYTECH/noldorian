@@ -16,15 +16,15 @@ DEPLOY = """\
 
 ## What Noldorian is (30 seconds)
 
-Noldorian is Everplay-Tech's OPERATOR tier: portable, pip-installable CLIs for
-humans and agents. It sits beside the snx spellbook (see `xalakazam --spells`):
-spells are agent-facing (JSON receipts, no prompts, banked to a ledger);
-Noldorian tools are the human-in-the-loop and cross-machine glue.
+Noldorian is Everplay-Tech's portable, pip-installable boundary for agents and
+operators. It sits beside the snx spellbook (see `xalakazam --spells`): spells
+are agent-facing (JSON receipts, no prompts, banked to a ledger); Noldorian
+provides the explicit human gate and cross-machine operator tools.
 Source of truth: the public repo github.com/E-TECH-PLAYTECH/noldorian.
 
 | CLI        | Package  | Use it for |
 |------------|----------|------------|
-| `keyabra`  | keyabra  | Secrets: getpass prompts AND 0600 env-vaults with run-time
+| `keyabra`  | keyabra  | Compatibility operator surface: getpass prompts AND 0600 env-vaults with run-time
 |            |          | indirection (`NAME__FILE=/path`, `NAME__CMD=cmd`). Load with
 |            |          | `keyabra run --env-file <vault> -- <cmd>` — secrets stay
 |            |          | in-process, never argv, never duplicated to disk. |
@@ -42,13 +42,11 @@ Source of truth: the public repo github.com/E-TECH-PLAYTECH/noldorian.
      https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \\
      | bash -s -- --all
 
-2) Install the public agent-facing package directly from PyPI:
+2) Install the unified package directly from PyPI (all family CLIs included):
    python3 -m pip install noldorian
 
-3) Direct Git install, one family package at a time:
-   python3 -m pip install --user \\
-     "git+https://github.com/E-TECH-PLAYTECH/noldorian.git#subdirectory=keyabra"
-   (swap subdirectory= for xalakazam / xadabra / binabra / xabra)
+3) The compatibility aliases (`keyabra`, `xadabra`, `abra`, `xabra`, and
+   `xalakazam`) are installed by that same command.
 
 4) macOS Homebrew (the repo doubles as a tap — no cask; these are CLIs):
    brew tap everplay-tech/noldorian https://github.com/E-TECH-PLAYTECH/noldorian.git
@@ -56,7 +54,7 @@ Source of truth: the public repo github.com/E-TECH-PLAYTECH/noldorian.
 
 After install make sure the pip user bin dir is on PATH
 (`python3 -m site --user-base` + /bin — e.g. ~/Library/Python/3.9/bin or
-~/.local/bin). Verify: `keyabra --version && xalakazam --spells | head -3`.
+~/.local/bin). Verify: `noldorian --version && keyabra --version && xalakazam --spells | head -3`.
 
 ## Strategic use (the doctrine)
 
@@ -66,10 +64,11 @@ After install make sure the pip user bin dir is on PATH
   (`__FILE`, `__CMD`) so key material is never duplicated. Canonical Everplay
   release vault: ~/.config/keyabra/everplay-release.env (ASC App-Manager key
   id+p8 pointer, notary key, ORG_PAT__CMD=gh auth token).
-- AGENT vs OWNER: agents must not self-authorize secret writes — permission
-  classifiers/wards will (correctly) block them. The owner runs the granting
-  command once (a settings permission rule, or the keyabra vault); agents
-  consume forever after. Design flows around that split.
+- AGENT vs OWNER: an agent may request a reviewed capability with
+  `request_credential_enrollment`; Noldorian opens the owner-only hidden
+  prompt. The owner approves and enters the credential there; the agent sees
+  only a request status and later consumes the named capability. No secret is
+  pasted into chat, argv, the MCP result, or a receipt.
 - CLOUD: cloud containers have NO spellbook and NO wards. Use plain shell +
   `xadabra --cloud`; report results back over HTTP (innertube) — a cloud
   "receipt" that lands nowhere is a claim, not a receipt.
@@ -79,9 +78,8 @@ After install make sure the pip user bin dir is on PATH
 
 ## MCP
 
-The public package ships `noldorian-mcp` for capability discovery and
-policy-bound invocation. The repository also retains an operator deployment
-MCP at `mcp/noldorian_mcp.py`.
+The public package ships `noldorian-mcp` for capability discovery, reviewed
+human enrollment, enrollment status, and policy-bound invocation.
 """
 
 SPELLS = """\

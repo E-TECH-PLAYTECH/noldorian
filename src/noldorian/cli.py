@@ -38,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("status", help="check broker readiness")
     commands.add_parser("list", help="list public credential capabilities")
+    commands.add_parser(
+        "templates",
+        help="list reviewed human enrollment templates",
+    )
 
     describe = commands.add_parser("describe", help="describe one capability")
     describe.add_argument("capability_id")
@@ -46,19 +50,72 @@ def build_parser() -> argparse.ArgumentParser:
     invoke.add_argument("capability_id")
     invoke.add_argument("operation")
     invoke.add_argument("--arguments-json", type=_json_object, default={})
+
+    enrollment = commands.add_parser(
+        "request-enrollment",
+        aliases=["enroll"],
+        help="ask the owner-only Noldorian prompt to create a capability",
+    )
+    enrollment.add_argument("template_id")
+    enrollment.add_argument("--purpose", required=True, help="human-readable reason for access")
+    enrollment.add_argument("--capability-id")
+    enrollment.add_argument(
+        "--operation",
+        dest="operations",
+        action="append",
+        default=None,
+        help="narrow the reviewed template operation set (repeatable)",
+    )
+    enrollment.add_argument("--resources-json", type=_json_object, default=None)
+
+    status = commands.add_parser(
+        "enrollment-status",
+        help="check a human enrollment request without revealing a credential",
+    )
+    status.add_argument("request_id")
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    args = build_parser().parse_args(argv)
+    raw_argv = list(argv if argv is not None else sys.argv[1:])
+    family_commands = {
+        "keyabra": ("keyabra.cli", "keyabra"),
+        "xadabra": ("xadabra.cli", "xadabra"),
+        "xabra": ("xabra.cli", "xabra"),
+        "abra": ("binabra.cli", "abra"),
+        "binabra": ("binabra.cli", "binabra"),
+        "xalakazam": ("xalakazam.cli", "xalakazam"),
+    }
+    if raw_argv and raw_argv[0] in family_commands:
+        module_name, label = family_commands[raw_argv[0]]
+        try:
+            module = __import__(module_name, fromlist=["main"])
+        except ImportError as exc:
+            print(f"noldorian: bundled {label} surface is unavailable", file=sys.stderr)
+            raise SystemExit(1) from exc
+        return int(module.main(raw_argv[1:]))
+
+    args = build_parser().parse_args(raw_argv)
     client = BrokerClient(args.socket)
     try:
         if args.command == "status":
             result = client.status()
         elif args.command == "list":
             result = client.list_capabilities()
+        elif args.command == "templates":
+            result = client.list_enrollment_templates()
         elif args.command == "describe":
             result = client.describe(args.capability_id)
+        elif args.command in {"request-enrollment", "enroll"}:
+            result = client.request_enrollment(
+                args.template_id,
+                args.purpose,
+                capability_id=args.capability_id,
+                operations=args.operations,
+                resources=args.resources_json,
+            )
+        elif args.command == "enrollment-status":
+            result = client.enrollment_status(args.request_id)
         else:
             result = client.invoke(
                 args.capability_id,

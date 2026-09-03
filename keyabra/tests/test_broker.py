@@ -4,8 +4,10 @@ import base64
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -17,6 +19,7 @@ from keyabra.broker import (
 )
 from keyabra.broker_client import BrokerClient
 from keyabra.broker_server import BrokerDaemon
+from keyabra.enrollment import EnrollmentCoordinator, HumanEnrollmentGate
 
 
 ADMIN_SPEC = {
@@ -90,6 +93,83 @@ class CapabilityStoreTests(unittest.TestCase):
             self.assertFalse(described["available"])
             self.assertEqual(described["operations"], sorted(ADMIN_SPEC["operations"]))
 
+    def test_agent_request_uses_reviewed_template_and_no_secret_field(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = CapabilityStore(Path(tmp) / "state")
+            request = store.prepare_enrollment(
+                {
+                    "template_id": "openai.tunnel.admin",
+                    "purpose": "Studio Bridge tunnel administration",
+                    "resources": {"organization_ids": ["org_example"]},
+                    "operations": ["tunnels.list"],
+                }
+            )
+            serialized = json.dumps(request)
+            self.assertTrue(request["request_id"].startswith("enroll_"))
+            self.assertNotIn("secret", serialized.lower())
+            self.assertEqual(request["spec"]["adapter"], "openai_tunnel_admin")
+
+    def test_agent_cannot_smuggle_credential_material_into_enrollment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            store = CapabilityStore(Path(tmp) / "state")
+            with self.assertRaises(BrokerError):
+                store.prepare_enrollment(
+                    {
+                        "template_id": "openai.tunnel.admin",
+                        "purpose": "Studio Bridge administration",
+                        "secret": "must-never-be-accepted",
+                    }
+                )
+
+    def test_enrollment_coordinator_stores_secret_only_after_prompt_result(self) -> None:
+        secret = b"human-gate-secret-never-returned"
+        calls: list[list[str]] = []
+
+        def runner(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+            calls.append(command)
+            return subprocess.CompletedProcess(
+                command,
+                0,
+                json.dumps(
+                    {
+                        "status": "approved",
+                        "secret_b64": base64.b64encode(secret).decode("ascii"),
+                    }
+                ),
+                "",
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = CapabilityStore(root / "state")
+            gate = HumanEnrollmentGate(
+                prompt_uid=os.getuid(),
+                prompt_python=sys.executable,
+                prompt_app=sys.executable,
+                launchctl_bin=sys.executable,
+                runner=runner,
+            )
+            coordinator = EnrollmentCoordinator(store, gate)
+            result = coordinator.request(
+                {
+                    "template_id": "openai.tunnel.admin",
+                    "purpose": "Studio Bridge tunnel administration",
+                    "resources": {"organization_ids": ["org_example"]},
+                    "operations": ["tunnels.list"],
+                }
+            )
+            request_id = str(result["request_id"])
+            for _ in range(50):
+                status = store.enrollment_status(request_id)
+                if status["status"] in {"enrolled", "failed", "cancelled"}:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(status["status"], "enrolled")
+            self.assertTrue(store.describe("openai.tunnel.admin")["available"])
+            self.assertEqual(store.read_secret("openai.tunnel.admin"), secret)
+            self.assertEqual(len(calls), 1)
+            self.assertNotIn(secret.decode(), json.dumps(result))
+
 
 class TunnelAdminAdapterTests(unittest.TestCase):
     def test_secret_is_env_only_and_response_is_structurally_redacted(self) -> None:
@@ -145,6 +225,13 @@ class TunnelAdminAdapterTests(unittest.TestCase):
 
 
 class BrokerSocketTests(unittest.TestCase):
+    def test_enrollment_templates_are_discoverable_without_internal_details(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            result = CapabilityStore(Path(tmp) / "state").list_enrollment_templates()
+            self.assertEqual(result["schema"], "noldorian.enrollment-templates/v1")
+            self.assertEqual(result["templates"][0]["template_id"], "openai.tunnel.admin")
+            self.assertNotIn("adapter", json.dumps(result))
+
     def test_agent_can_query_but_no_secret_retrieval_action_exists(self) -> None:
         secret = b"socket-secret-value-never-returned"
         with tempfile.TemporaryDirectory() as tmp:
@@ -170,6 +257,42 @@ class BrokerSocketTests(unittest.TestCase):
                 self.assertTrue(listed["capabilities"][0]["available"])
                 with self.assertRaises(BrokerError):
                     client.request("get_secret", capability_id="openai.tunnel.admin")
+            finally:
+                daemon.shutdown()
+                daemon.server_close()
+                thread.join(timeout=2)
+
+    def test_agent_request_reports_missing_prompt_instead_of_claiming_enrollment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            store = CapabilityStore(root / "state")
+            broker = CapabilityBroker(store, tunnel_client_bin="/bin/echo")
+            uid = os.getuid()
+            daemon = BrokerDaemon(
+                root / "broker.sock",
+                broker,
+                allowed_uids={uid},
+                owner_uids={uid},
+                socket_mode=0o600,
+            )
+            thread = threading.Thread(target=daemon.serve_forever, daemon=True)
+            thread.start()
+            try:
+                client = BrokerClient(root / "broker.sock")
+                result = client.request(
+                    "request_enrollment",
+                    template_id="openai.tunnel.admin",
+                    purpose="Studio Bridge administration",
+                )
+                request_id = str(result["request_id"])
+                for _ in range(50):
+                    status = client.request("enrollment_status", request_id=request_id)
+                    if status["status"] in {"enrolled", "failed", "cancelled"}:
+                        break
+                    time.sleep(0.01)
+                self.assertEqual(status["status"], "failed")
+                self.assertEqual(status["error"], "prompt_unavailable")
+                self.assertNotIn("secret", json.dumps(status).lower())
             finally:
                 daemon.shutdown()
                 daemon.server_close()

@@ -27,6 +27,14 @@ TOOLS = [
         "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
     },
     {
+        "name": "list_credential_enrollment_templates",
+        "description": (
+            "List reviewed credential enrollment templates, supported operations, and "
+            "providers without returning credential values or custody data."
+        ),
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
         "name": "describe_credential_capability",
         "description": "Describe one credential capability without revealing its secret.",
         "inputSchema": {
@@ -50,6 +58,36 @@ TOOLS = [
             "additionalProperties": False,
         },
     },
+    {
+        "name": "request_credential_enrollment",
+        "description": (
+            "Ask Noldorian to open the owner-only human enrollment prompt for a reviewed "
+            "template. This accepts policy metadata only, never a credential value, and "
+            "returns non-secret status. Poll the request with get_credential_enrollment_status."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "template_id": {"type": "string", "minLength": 1},
+                "purpose": {"type": "string", "minLength": 1, "maxLength": 500},
+                "capability_id": {"type": "string", "minLength": 3, "maxLength": 128},
+                "operations": {"type": "array", "items": {"type": "string"}},
+                "resources": {"type": "object"},
+            },
+            "required": ["template_id", "purpose"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "get_credential_enrollment_status",
+        "description": "Return non-secret status for one Noldorian human enrollment request.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"request_id": {"type": "string", "minLength": 1}},
+            "required": ["request_id"],
+            "additionalProperties": False,
+        },
+    },
 ]
 
 
@@ -61,8 +99,11 @@ class McpServer:
         self.dispatch: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
             "broker_status": lambda _args: self.client.status(),
             "list_credential_capabilities": lambda _args: self.client.list_capabilities(),
+            "list_credential_enrollment_templates": lambda _args: self.client.list_enrollment_templates(),
             "describe_credential_capability": self._describe,
             "invoke_credential_capability": self._invoke,
+            "request_credential_enrollment": self._request_enrollment,
+            "get_credential_enrollment_status": self._enrollment_status,
         }
 
     def _describe(self, args: Dict[str, Any]) -> Dict[str, Any]:
@@ -82,6 +123,38 @@ class McpServer:
         if not isinstance(arguments, dict):
             raise BrokerError("arguments must be an object")
         return self.client.invoke(capability_id, operation, arguments)
+
+    def _request_enrollment(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        template_id = args.get("template_id")
+        purpose = args.get("purpose")
+        if not isinstance(template_id, str) or not template_id.strip():
+            raise BrokerError("template_id is required")
+        if not isinstance(purpose, str) or not purpose.strip():
+            raise BrokerError("purpose is required")
+        capability_id = args.get("capability_id")
+        operations = args.get("operations")
+        resources = args.get("resources")
+        if capability_id is not None and not isinstance(capability_id, str):
+            raise BrokerError("capability_id must be a string")
+        if operations is not None and (
+            not isinstance(operations, list) or any(not isinstance(item, str) for item in operations)
+        ):
+            raise BrokerError("operations must be an array of strings")
+        if resources is not None and not isinstance(resources, dict):
+            raise BrokerError("resources must be an object")
+        return self.client.request_enrollment(
+            template_id,
+            purpose,
+            capability_id=capability_id,
+            operations=operations,
+            resources=resources,
+        )
+
+    def _enrollment_status(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        request_id = args.get("request_id")
+        if not isinstance(request_id, str) or not request_id.strip():
+            raise BrokerError("request_id is required")
+        return self.client.enrollment_status(request_id)
 
     @staticmethod
     def _reply(output: TextIO, message_id: Any, *, result: Any = None, error: Any = None) -> None:
@@ -112,8 +185,12 @@ class McpServer:
                         "capabilities": {"tools": {}},
                         "serverInfo": {"name": "noldorian", "version": __version__},
                         "instructions": (
-                            "List credential capabilities before authenticated work. "
-                            "Never inspect vaults or request secret values."
+                            "List credential capabilities before authenticated work. If a "
+                            "needed capability is absent or unavailable, list reviewed "
+                            "enrollment templates, then call request_credential_enrollment "
+                            "with a template and purpose; Noldorian will open the "
+                            "human-only prompt. Poll its status. Never inspect vaults or "
+                            "request secret values."
                         ),
                     },
                 )

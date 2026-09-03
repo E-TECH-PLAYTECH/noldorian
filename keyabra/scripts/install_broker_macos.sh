@@ -7,6 +7,7 @@ set -euo pipefail
 
 SCRIPT_DIR="${0:A:h}"
 KEYABRA_ROOT="${SCRIPT_DIR:h}"
+ZIPAPP_SOURCE="$KEYABRA_ROOT/src"
 BROKER_USER="${SUDO_USER:-}"
 TUNNEL_CLIENT_BIN="/opt/homebrew/Cellar/tunnel-client/0.0.13/libexec/tunnel-client"
 PYTHON_BIN="/usr/bin/python3"
@@ -68,13 +69,31 @@ PLIST_PATH="/Library/LaunchDaemons/com.everplay.noldorian-key-broker.plist"
 PYZ_PATH="$APP_DIR/keyabrad.pyz"
 INSTALLED_TUNNEL_CLIENT="$APP_DIR/tunnel-client"
 TEMP_PYZ="$(mktemp /tmp/keyabrad.XXXXXX.pyz)"
+TEMP_STAGE=""
 
 cleanup() {
   /bin/rm -f "$TEMP_PYZ"
+  if [[ -n "$TEMP_STAGE" && -d "$TEMP_STAGE" ]]; then
+    /bin/rm -rf "$TEMP_STAGE"
+  fi
 }
 trap cleanup EXIT
 
-"$PYTHON_BIN" -m zipapp "$KEYABRA_ROOT/src" \
+# Source layout is repo-style when run from a checkout and wheel-style when
+# run from the installed unified Noldorian package.  Stage the latter so the
+# zipapp keeps the top-level `keyabra` package expected by its entry point.
+if [[ ! -d "$ZIPAPP_SOURCE/keyabra" && -d "$KEYABRA_ROOT/keyabra" ]]; then
+  TEMP_STAGE="$(mktemp -d /tmp/noldorian-keyabra-stage.XXXXXX)"
+  /bin/mkdir -p "$TEMP_STAGE/keyabra"
+  /usr/bin/ditto "$KEYABRA_ROOT/keyabra" "$TEMP_STAGE/keyabra"
+  ZIPAPP_SOURCE="$TEMP_STAGE"
+fi
+if [[ ! -d "$ZIPAPP_SOURCE/keyabra" ]]; then
+  print -u2 "could not locate bundled keyabra broker package"
+  exit 2
+fi
+
+"$PYTHON_BIN" -m zipapp "$ZIPAPP_SOURCE" \
   -m "keyabra.broker_server:main" \
   -o "$TEMP_PYZ"
 
@@ -112,6 +131,12 @@ trap cleanup EXIT
     <string>$BROKER_GID</string>
     <string>--socket-mode</string>
     <string>0660</string>
+    <string>--prompt-uid</string>
+    <string>$BROKER_UID</string>
+    <string>--prompt-python</string>
+    <string>$PYTHON_BIN</string>
+    <string>--prompt-app</string>
+    <string>$PYZ_PATH</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

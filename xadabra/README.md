@@ -56,16 +56,24 @@ xadabra --dry-run    # preview only
 xadabra --yes        # skip confirmation
 ```
 
-## Noldorian private GitHub (`xadabra noldorian`)
+## Legacy Noldorian source workflow (`xadabra noldorian`)
 
-Turn the private-repo walkthrough into commands:
+The normal installation is the unified public package, which includes all
+family CLIs and the agent-safe MCP server:
+
+```bash
+python3 -m pip install noldorian==0.2.0
+```
+
+The commands below are maintainer-only compatibility helpers for packing or
+publishing source. They are not the agent enrollment path:
 
 ```bash
 xadabra noldorian guide          # checklist (browser steps + commands)
 xadabra noldorian pack           # refresh ~/noldorian subdirs
 xadabra noldorian push           # git commit, tag, push (prompts org/repo)
-xadabra noldorian install        # pip install lines from private GitHub
-xadabra noldorian yank           # yank public PyPI versions (token prompt)
+xadabra noldorian install        # pinned unified install command
+xadabra noldorian yank           # legacy PyPI maintenance (token prompt)
 
 # Or paste-once full flow (copy template → xadabra):
 xadabra noldorian script --copy  # clipboard

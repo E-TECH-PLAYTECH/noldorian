@@ -4,4 +4,4 @@ from noldorian.client import BrokerClient, DEFAULT_SOCKET_PATH
 from noldorian.errors import BrokerError
 
 __all__ = ["BrokerClient", "BrokerError", "DEFAULT_SOCKET_PATH"]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

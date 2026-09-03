@@ -10,8 +10,8 @@
 #   curl -fsSL https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \
 #     | bash -s -- --all
 #
-# Default: keyabra + xalakazam (the secrets tool and the orienter).
-#   --all      also xadabra, binabra, xabra
+# Default: the unified noldorian distribution (includes the family CLIs).
+#   --all      compatibility alias; the same unified distribution is installed
 #   --spells   also clone the snx spellbook to ~/spells + install the snx shim.
 #              Cloud containers: cast freely — the container grimoire is
 #              ephemeral, so EXPORT receipts before exit (receipts/ is
@@ -21,31 +21,22 @@
 #              An unexported cast never happened.
 set -euo pipefail
 
-REPO="E-TECH-PLAYTECH/noldorian"
 SPELLS_REPO="E-TECH-PLAYTECH/spells"
-PKGS=(noldorian keyabra xalakazam)
 WANT_SPELLS=0
 for a in "$@"; do
   case "$a" in
-    --all)    PKGS=(noldorian keyabra xalakazam xadabra binabra xabra) ;;
+    --all)    : ;;
     --spells) WANT_SPELLS=1 ;;
     *) echo "bootstrap: unknown flag $a (valid: --all --spells)" >&2; exit 1 ;;
   esac
 done
 
-URL="https://github.com/${REPO}.git"
-
 # --- noldorian CLIs ----------------------------------------------------
 PY="$(command -v python3)"
-echo "== installing: ${PKGS[*]} (user site) =="
-for p in "${PKGS[@]}"; do
-  SPEC="git+${URL}"
-  if [ "$p" != "noldorian" ]; then
-    SPEC="${SPEC}#subdirectory=${p}"
-  fi
-  "$PY" -m pip install --user --quiet "$SPEC" \
-    && echo "  ${p}: ok" || { echo "  ${p}: FAILED" >&2; exit 1; }
-done
+echo "== installing: noldorian (unified family distribution, user site) =="
+"$PY" -m pip install --user --quiet "noldorian>=0.2,<0.3" \
+  && echo "  noldorian + keyabra + xadabra + xabra + binabra + xalakazam: ok" \
+  || { echo "  noldorian: FAILED" >&2; exit 1; }
 
 USER_BIN="$("$PY" -m site --user-base)/bin"
 case ":$PATH:" in

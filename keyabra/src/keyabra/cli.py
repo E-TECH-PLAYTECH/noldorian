@@ -407,7 +407,7 @@ def _cmd_pypi(argv: list[str]) -> int:
         )
 
     if sub == "yank-all":
-        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
+        reason = "Superseded by the unified public noldorian distribution"
         releases = [
             ("binabra", "0.1.0"),
             ("binabra", "0.1.1"),
@@ -438,7 +438,7 @@ def _cmd_pypi(argv: list[str]) -> int:
             return 1
         pkg = argv[1]
         versions = argv[2:]
-        reason = "Moved to private GitHub: https://github.com/Everplay-Tech/noldorian"
+        reason = "Superseded by the unified public noldorian distribution"
         twine = _require("twine")
         token = prompt_secret("PyPI token (pypi-...)")
         for ver in versions:
