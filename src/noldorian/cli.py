@@ -95,7 +95,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raise SystemExit(1) from exc
         return int(module.main(raw_argv[1:]))
 
-    if raw_argv and raw_argv[0] in ("run", "env", "pypi", "copy"):
+    if raw_argv and raw_argv[0] in ("run", "env", "copy"):
         from xabra.operator import main as operator_main
 
         return int(operator_main(raw_argv))

@@ -27,7 +27,7 @@ def cmd_guide(_: argparse.Namespace) -> int:
               xabra env init
 
             This helper does not clone GitHub, pack sibling packages, or publish.
-            Hidden PyPI upload is: xabra pypi publish
+            Install is always: python3 -m pip install noldorian
             """
         ).strip()
     )

@@ -119,6 +119,12 @@ class VaultContractTests(unittest.TestCase):
             self.assertEqual(code, 0)
             self.assertEqual(marker.read_text(), secret)
 
+    def test_xabra_has_no_pypi_subcommand(self) -> None:
+        from xabra.operator import help_text
+
+        self.assertNotIn("pypi", help_text())
+        self.assertEqual(operator_main(["pypi", "publish", "."]), 1)
+
     def test_builtin_app_catalog_is_empty(self) -> None:
         from xabra import BUILTIN_APPS
 

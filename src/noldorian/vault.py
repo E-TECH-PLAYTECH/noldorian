@@ -246,14 +246,6 @@ def run_with_env(
             env_vars[key] = ""
 
 
-def find_dist_files(project_dir: Path) -> list[str]:
-    dist = project_dir / "dist"
-    if not dist.is_dir():
-        return []
-    files = sorted(dist.glob("*"))
-    return [str(p) for p in files if p.is_file() and not p.name.endswith(".asc")]
-
-
 def child_run_template(command: str = "<command>") -> dict[str, str]:
     """Describe how an owner runs a child with the vault. Never includes values."""
 

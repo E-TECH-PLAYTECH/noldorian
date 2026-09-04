@@ -42,12 +42,6 @@ Vault lines: `NAME=value`, `NAME__FILE=/path` (contents at run time),
 If `~/.config/noldorian/` has no vault yet, a 0.2.0-era file at
 `~/.config/keyabra/keyabra.env` is still read so existing vaults keep working.
 
-Hidden PyPI upload (token never on argv):
-
-```bash
-xabra pypi publish .
-```
-
 ## Other CLIs
 
 | CLI | Purpose |

@@ -54,48 +54,7 @@ exec "$BIN/other-script" "$@"
 | `abra init [dir]` | Create `bin/abra` in a project |
 | `abra colocate [dest]` | Copy `abra` into a bin folder |
 
-## Publish to PyPI
-
-### 1. Create an API token
-
-https://pypi.org/manage/account/token/
-
-- Scope: **Entire account** (first time) or **Project: binabra** (after first upload)
-- Copy the token (`pypi-...`)
-
-### 2. Build
-
-```bash
-cd ~/Projects/binabra
-python3 -m pip install --user build twine
-python3 -m build
-```
-
-### 3. Upload
-
-```bash
-export TWINE_USERNAME=__token__
-export TWINE_PASSWORD=pypi-YOUR-TOKEN-HERE
-twine upload dist/*
-```
-
-Or enter credentials when prompted:
-
-```bash
-twine upload dist/*
-# username: __token__
-# password: pypi-...
-```
-
-### 4. Verify
-
-```bash
-python3 -m pip install noldorian
-abra --version
-abra embed
-```
-
-PyPI project page: https://pypi.org/project/noldorian/
+`abra` ships inside `python3 -m pip install noldorian`. It is not a separate PyPI project.
 
 ## Python API
 

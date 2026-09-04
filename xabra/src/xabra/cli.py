@@ -213,7 +213,7 @@ def act_doctor(as_json: bool) -> int:
 
 # ---------------------------------------------------------------- entry
 
-OPERATOR_COMMANDS = {"run", "env", "pypi", "copy", "macos-keychain"}
+OPERATOR_COMMANDS = {"run", "env", "copy", "macos-keychain"}
 
 
 def main(argv: list[str] | None = None) -> int:

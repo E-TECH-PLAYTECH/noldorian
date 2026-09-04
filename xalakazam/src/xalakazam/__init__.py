@@ -25,7 +25,7 @@ Install one public package:
 | CLI | Use it for |
 |-----|------------|
 | `noldorian` | doctor, optional Gondolin extension client |
-| `xabra` | vault (`run --env-file`, env, copy, pypi publish) and verified install |
+| `xabra` | vault (`run --env-file`, env, copy) and verified install |
 | `xadabra` | clipboard/stdin script runner with {{placeholders}} |
 | `xalakazam` | this orienter |
 | `abra` | bin-directory anchor: `source "$(abra sh)"` |

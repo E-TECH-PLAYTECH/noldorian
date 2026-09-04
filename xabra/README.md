@@ -8,7 +8,6 @@ Ships with `pip install noldorian`. Two jobs, one command:
 xabra env init
 xabra env set TOKEN_NAME
 xabra run --env-file ~/.config/noldorian/vault.env -- ./deploy.sh
-xabra pypi publish .
 ```
 
 **Verified install** from *your* registry (default empty):

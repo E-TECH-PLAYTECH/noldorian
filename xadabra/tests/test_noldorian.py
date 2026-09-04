@@ -18,6 +18,7 @@ class TestNoldorian(unittest.TestCase):
         self.assertNotIn("Everplay-Tech", text)
         self.assertNotIn("git+", text)
         self.assertNotIn("Keyabra", text)
+        self.assertNotIn("pypi publish", text)
 
     def test_install_prints_pinned_pypi_spec(self) -> None:
         args = type("Args", (), {"run": False})()

@@ -92,13 +92,6 @@ xadabra noldorian script --path
 - Optional local history: `~/.xadabra/history.jsonl` (scripts only — **never** placeholder values)
 - Secrets masked as `*****` in previews and history
 
-## Publish
-
-```bash
-python3 -m pip install noldorian build twine
-xabra pypi publish
-```
-
 ## Tests
 
 ```bash

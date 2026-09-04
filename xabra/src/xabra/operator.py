@@ -1,4 +1,4 @@
-"""Operator vault CLI: hidden prompt, 0600 vault, child env, PyPI upload."""
+"""Operator vault CLI: hidden prompt, 0600 vault, child env."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from pathlib import Path
 
 from noldorian.vault import (
     default_vault_path,
-    find_dist_files,
     list_vault_names,
     load_env_file,
     probe_env_file,
@@ -21,24 +20,6 @@ from noldorian.vault import (
 from xabra import __version__
 
 PROG = "xabra"
-
-
-def _require(cmd: str) -> str:
-    path = shutil.which(cmd)
-    if path:
-        return path
-    for candidate in (
-        Path.home() / "Library/Python/3.9/bin" / cmd,
-        Path.home() / "Library/Python/3.10/bin" / cmd,
-        Path.home() / "Library/Python/3.11/bin" / cmd,
-        Path.home() / "Library/Python/3.12/bin" / cmd,
-        Path.home() / ".local/bin" / cmd,
-    ):
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
-    print(f"{PROG}: '{cmd}' not found — install it first:", file=sys.stderr)
-    print("  python3 -m pip install --user build twine", file=sys.stderr)
-    raise SystemExit(1)
 
 
 def _cmd_run(argv: list[str]) -> int:
@@ -325,86 +306,6 @@ def _cmd_copy(argv: list[str]) -> int:
     return 0
 
 
-def _cmd_pypi(argv: list[str]) -> int:
-    sub = argv[0] if argv else "upload"
-
-    if sub == "upload":
-        paths = [p for p in argv[1:] if p != "--skip-build"]
-        if not paths:
-            paths = find_dist_files(Path.cwd())
-            if not paths:
-                print(
-                    f"{PROG}: no dist/ files — run from project root or pass paths",
-                    file=sys.stderr,
-                )
-                return 1
-
-        twine = _require("twine")
-        token = prompt_secret("PyPI token (pypi-...)")
-        return run_with_env(
-            [twine, "upload", *paths],
-            {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
-        )
-
-    if sub == "publish":
-        args = [a for a in argv[1:] if a != "--skip-build"]
-        project = Path(args[0] if args else ".").expanduser().resolve()
-        skip_build = "--skip-build" in argv
-        paths = find_dist_files(project)
-
-        if not paths and not skip_build:
-            print(f"{PROG}: building {project} ...")
-            rc = subprocess.run(
-                [sys.executable, "-m", "build"],
-                cwd=str(project),
-                check=False,
-            ).returncode
-            if rc != 0:
-                return rc
-            paths = find_dist_files(project)
-
-        if not paths:
-            print(f"{PROG}: nothing to upload in {project / 'dist'}", file=sys.stderr)
-            return 1
-
-        twine = _require("twine")
-        token = prompt_secret("PyPI token (pypi-...)")
-        print(f"{PROG}: uploading {len(paths)} file(s) ...")
-        return run_with_env(
-            [twine, "upload", *paths],
-            {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
-            cwd=project,
-        )
-
-    if sub == "yank":
-        if len(argv) < 3:
-            print(
-                f"usage: {PROG} pypi yank <package> <version> [version...]",
-                file=sys.stderr,
-            )
-            return 1
-        pkg = argv[1]
-        versions = argv[2:]
-        reason = "Superseded by the unified public noldorian distribution"
-        twine = _require("twine")
-        token = prompt_secret("PyPI token (pypi-...)")
-        for ver in versions:
-            print(f"{PROG}: yanking {pkg} {ver} ...")
-            rc = run_with_env(
-                [twine, "yank", pkg, ver, "-y", "--reason", reason],
-                {"TWINE_USERNAME": "__token__", "TWINE_PASSWORD": token},
-            )
-            if rc != 0:
-                return rc
-        return 0
-
-    print("usage:", file=sys.stderr)
-    print(f"  {PROG} pypi upload [dist/files...]", file=sys.stderr)
-    print(f"  {PROG} pypi publish [project-dir] [--skip-build]", file=sys.stderr)
-    print(f"  {PROG} pypi yank <pkg> <ver>...   yank specific release(s)", file=sys.stderr)
-    return 1
-
-
 def _cmd_macos_keychain(argv: list[str]) -> int:
     from xabra.macos_keychain import MacOSKeychainError, unlock_keychain_from_vault
 
@@ -473,7 +374,6 @@ Vault (paste-once, child env, no secret on argv):
   {PROG} run --env-file P -- cmd      load a 0600 env-vault → run command
   {PROG} env init|set|set-file|probe|list
   {PROG} copy NAME [--ttl S]          vault -> clipboard, never displayed
-  {PROG} pypi publish [dir]           build → hidden token → twine upload
   {PROG} macos-keychain unlock ...    0600 vault → in-process keychain unlock
 
 Verified install (operator registry, default empty):
@@ -503,8 +403,6 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_env(argv[1:])
     if argv[0] == "copy":
         return _cmd_copy(argv[1:])
-    if argv[0] == "pypi":
-        return _cmd_pypi(argv[1:])
     if argv[0] == "macos-keychain":
         return _cmd_macos_keychain(argv[1:])
 

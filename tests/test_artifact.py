@@ -34,6 +34,7 @@ FORBIDDEN_SNIPPETS = (
     "pip install binabra",
     "pip install keyabra",
     "pip install xadabra",
+    "xabra pypi publish",
 )
 FORBIDDEN_WHEEL_SUBSTRINGS = (
     "install_broker",
