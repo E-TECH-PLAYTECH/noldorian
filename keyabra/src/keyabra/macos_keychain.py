@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-from keyabra import load_env_value
+from noldorian.vault import load_env_value
 
 
 class MacOSKeychainError(RuntimeError):

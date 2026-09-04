@@ -1,4 +1,4 @@
-"""Command-line interface for public Noldorian capability operations."""
+"""Command-line interface for public Noldorian operations."""
 
 from __future__ import annotations
 
@@ -26,17 +26,18 @@ def _json_object(value: str) -> Dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="noldorian",
-        description="Query and invoke agent-safe credential capabilities.",
+        description="Vault-aware operator CLI plus optional Gondolin extension client.",
     )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument(
         "--socket",
         type=Path,
         default=DEFAULT_SOCKET_PATH,
-        help="broker Unix socket (default: %(default)s)",
+        help="optional Gondolin Unix socket (default: %(default)s)",
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("status", help="check broker readiness")
+    commands.add_parser("doctor", help="install, vault, and extension status (no socket required)")
+    commands.add_parser("status", help="check optional extension readiness")
     commands.add_parser("list", help="list public credential capabilities")
     commands.add_parser(
         "templates",
@@ -54,7 +55,7 @@ def build_parser() -> argparse.ArgumentParser:
     enrollment = commands.add_parser(
         "request-enrollment",
         aliases=["enroll"],
-        help="ask the owner-only Noldorian prompt to create a capability",
+        help="ask the owner-only enrollment prompt to create a capability",
     )
     enrollment.add_argument("template_id")
     enrollment.add_argument("--purpose", required=True, help="human-readable reason for access")
@@ -79,7 +80,6 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Optional[Sequence[str]] = None) -> int:
     raw_argv = list(argv if argv is not None else sys.argv[1:])
     family_commands = {
-        "keyabra": ("keyabra.cli", "keyabra"),
         "xadabra": ("xadabra.cli", "xadabra"),
         "xabra": ("xabra.cli", "xabra"),
         "abra": ("binabra.cli", "abra"),
@@ -95,7 +95,26 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             raise SystemExit(1) from exc
         return int(module.main(raw_argv[1:]))
 
+    if raw_argv and raw_argv[0] in ("run", "env", "pypi", "copy"):
+        from xabra.operator import main as operator_main
+
+        return int(operator_main(raw_argv))
+
+    if raw_argv and raw_argv[0] == "doctor":
+        from noldorian.doctor import doctor_report
+
+        report = doctor_report()
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report.get("ok") else 1
+
     args = build_parser().parse_args(raw_argv)
+    if args.command == "doctor":
+        from noldorian.doctor import doctor_report
+
+        report = doctor_report(socket_path=args.socket)
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0 if report.get("ok") else 1
+
     client = BrokerClient(args.socket)
     try:
         if args.command == "status":

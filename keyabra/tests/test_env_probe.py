@@ -23,7 +23,7 @@ def test_probe_direct_value_returns_metadata_without_secret(tmp_path: Path) -> N
     receipt = probe_env_file(vault, "TOKEN")
 
     encoded = json.dumps(receipt, sort_keys=True)
-    assert receipt["schema"] == "keyabra.env-probe/v1"
+    assert receipt["schema"] == "noldorian.env-probe/v1"
     assert receipt["present"] is True
     assert receipt["non_empty"] is True
     assert receipt["mode"] == "0o600"

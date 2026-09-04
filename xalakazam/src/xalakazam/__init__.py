@@ -1,160 +1,84 @@
-"""xalakazam — the Everplay orienter. Callable memory, any machine, any session.
+"""xalakazam — Noldorian orienter. Callable memory for any machine.
 
-`xalakazam --deploy` and `xalakazam --spells` print the two playbooks below,
-so an agent or human landing on a fresh machine (or a cloud container) knows
-how to install and STRATEGICALLY use Noldorian and the snx spellbook without
-any prior context. The docs are embedded — the command works wherever the
-package is pip-installed, no repo checkout required.
+`xalakazam --deploy` prints how to install and use Noldorian. The docs are
+embedded — the command works wherever the package is pip-installed.
 """
 
 from __future__ import annotations
 
-__version__ = "0.1.5"
+__version__ = "0.2.1"
 
 DEPLOY = """\
 # XALAKAZAM --deploy — Noldorian: what it is, how to install it, how to use it
 
 ## What Noldorian is (30 seconds)
 
-Noldorian is Everplay-Tech's portable, pip-installable boundary for agents and
-operators. It sits beside the snx spellbook (see `xalakazam --spells`): spells
-are agent-facing (JSON receipts, no prompts, banked to a ledger); Noldorian
-provides the explicit human gate and cross-machine operator tools.
-Source of truth: the public repo github.com/E-TECH-PLAYTECH/noldorian.
+Noldorian keeps API tokens out of chat, argv, and logs. A human pastes a
+secret once into a 0600 vault. A child process gets the environment and does
+the work. Agents discover the install and the vault *contract*; they never
+receive secret values.
 
-| CLI        | Package  | Use it for |
-|------------|----------|------------|
-| `keyabra`  | keyabra  | Compatibility operator surface: getpass prompts AND 0600 env-vaults with run-time
-|            |          | indirection (`NAME__FILE=/path`, `NAME__CMD=cmd`). Load with
-|            |          | `keyabra run --env-file <vault> -- <cmd>` — secrets stay
-|            |          | in-process, never argv, never duplicated to disk. |
-| `xalakazam`| xalakazam| This orienter. `--deploy`, `--spells`, `--bootstrap`. |
-| `xadabra`  | xadabra  | Clipboard/stdin script runner with {{placeholders}}.
-|            |          | `xadabra --cloud` = plain-shell mode for cloud containers. |
-| `abra`     | binabra  | Bin-directory anchor: `source "$(abra sh)"`. |
-| `xabra`    | xabra    | Everplay app fetcher for direct-distribution apps
-|            |          | (Gatekeeper-verified installs, receipts, MCP protocol shim). |
+Install one public package:
 
-## Installing (pick the line that matches where you are)
+    python3 -m pip install noldorian
 
-1) Any machine with bash, Python, and Git:
-   curl -fsSL \\
-     https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \\
-     | bash -s -- --all
+| CLI | Use it for |
+|-----|------------|
+| `noldorian` | doctor, optional Gondolin extension client |
+| `xabra` | vault (`run --env-file`, env, copy, pypi publish) and verified install |
+| `xadabra` | clipboard/stdin script runner with {{placeholders}} |
+| `xalakazam` | this orienter |
+| `abra` | bin-directory anchor: `source "$(abra sh)"` |
+| `noldorian-mcp` | stdio MCP (doctor, orient, names-only vault, optional extension) |
 
-2) Install the unified package directly from PyPI (all family CLIs included):
-   python3 -m pip install noldorian
+## Vault
 
-3) The compatibility aliases (`keyabra`, `xadabra`, `abra`, `xabra`, and
-   `xalakazam`) are installed by that same command.
+Owner provisions once:
 
-4) macOS Homebrew (the repo doubles as a tap — no cask; these are CLIs):
-   brew tap everplay-tech/noldorian https://github.com/E-TECH-PLAYTECH/noldorian.git
-   brew install everplay-tech/noldorian/noldorian
+    xabra env init
+    xabra env set TOKEN_NAME
 
-After install make sure the pip user bin dir is on PATH
-(`python3 -m site --user-base` + /bin — e.g. ~/Library/Python/3.9/bin or
-~/.local/bin). Verify: `noldorian --version && keyabra --version && xalakazam --spells | head -3`.
+Every consumer thereafter:
 
-## Strategic use (the doctrine)
+    xabra run --env-file ~/.config/noldorian/vault.env -- <cmd>
 
-- SECRETS: never on argv, never pasted into chats. Owner provisions a vault
-  once (`keyabra env init/set/set-file`); every consumer thereafter is
-  `keyabra run --env-file <vault> -- <cmd>`. Vaults hold ids + POINTERS
-  (`__FILE`, `__CMD`) so key material is never duplicated. Canonical Everplay
-  release vault: ~/.config/keyabra/everplay-release.env (ASC App-Manager key
-  id+p8 pointer, notary key, ORG_PAT__CMD=gh auth token).
-- AGENT vs OWNER: an agent may request a reviewed capability with
-  `request_credential_enrollment`; Noldorian opens the owner-only hidden
-  prompt. The owner approves and enters the credential there; the agent sees
-  only a request status and later consumes the named capability. No secret is
-  pasted into chat, argv, the MCP result, or a receipt.
-- CLOUD: cloud containers have NO spellbook and NO wards. Use plain shell +
-  `xadabra --cloud`; report results back over HTTP (innertube) — a cloud
-  "receipt" that lands nowhere is a claim, not a receipt.
-- APPS: desktop family apps (e.g. DUD3Runner) install/update via `xabra`
-  (Gatekeeper-verified, receipts, keeps MCP enrollments pointed at the
-  installed binary).
+(also `noldorian run --env-file ... -- <cmd>`). Vaults hold ids and pointers
+(`NAME__FILE=/path`, `NAME__CMD=cmd`) so key material is not duplicated.
+The file must be 0600 or Noldorian refuses. If `~/.config/noldorian/` has no
+vault yet, a 0.2.0-era file under `~/.config/keyabra/` is still read.
 
-## MCP
+## Agents
 
-The public package ships `noldorian-mcp` for capability discovery, reviewed
-human enrollment, enrollment status, and policy-bound invocation.
+Point MCP at `noldorian-mcp` from the pip install. Call `doctor` first.
+`list_vault_names` returns names only. `child_run_template` returns the
+owner-run command. Never paste secrets into chat.
+
+An optional Gondolin extension may expose a Unix-socket capability broker.
+Everyday vault use does not require it. `noldorian doctor` reports
+extension absent without failing.
+
+## PATH
+
+After `pip install --user`, add the user script dir to PATH
+(`python3 -m site --user-base` + /bin). Verify: `noldorian doctor`.
 """
 
 SPELLS = """\
-# XALAKAZAM --spells — the snx spellbook: install it, then live by receipts
+# XALAKAZAM --spells
 
-## What spells are (30 seconds)
-
-The spellbook (PRIVATE repo github.com/E-TECH-PLAYTECH/spells) is a Python CLI
-(`snx <spell> [args]`) where every cast returns a JSON RECEIPT and is banked to
-an append-only ledger (the akashic/grimoire). Doctrine: **receipts over
-claims** — report what the receipt says; never re-narrate raw shell output.
-Spells are agent-facing: no prompts, flags/env only, mutating spells PREVIEW by
-default and only `--confirm` writes (with timestamped backups).
-
-## Installing on a new machine
-
-Needs: python3, git, authenticated `gh` (repos are private).
-  gh repo clone E-TECH-PLAYTECH/spells ~/spells
-  mkdir -p ~/bin && cat > ~/bin/snx <<'SH'
-#!/bin/bash
-# snx — global wrapper for the Snax CLI
-exec /usr/bin/env PYTHONPATH="$HOME/spells/snax:${PYTHONPATH}" python3 -m snax.cli "$@"
-SH
-  chmod +x ~/bin/snx   # ensure ~/bin is on PATH
-Verify: `snx list | head` and `snx snx-repo spells`.
-NOTE: cloud containers deliberately do NOT get the spellbook (no wards there,
-so no receipts ledger) — in the cloud use plain shell / `xadabra --cloud`.
-
-## Strategy (how to actually work)
-
-1. ROUTE FIRST: before raw shell, `snx route "<task>"` ranks spells for the
-   job; `snx list` shows the whole book. If a spell exists, cast it.
-2. THE BIG DEFAULTS:
-   - repo state: `snx snx-repo <repo>` (never hand-assembled git)
-   - commit: `snx commit-files <repo> "<msg>" <named files>` — NEVER `git add -A`
-   - push: `snx git-push <repo> [remote] [branch] --confirm` (previews first)
-   - checkout/branch: `snx git-co` · tags: `snx git-tag` · PRs: `snx gh-pr`
-     (create/checks/watch/view + a GUARDED merge that refuses unless the FULL
-     check set is green)
-   - CI runs: `snx gh-run list|jobs|logs|watch`
-   - long jobs (archives, notarization): dispatch DETACHED via
-     `snx conjure <spell> ...` then scry `conjure --wait <job> --timeout 165`
-     — direct calls die at tool timeouts; never poll-loop.
-3. WARDS ARE THE FLOOR: DALEK hooks block `git add -A`, secret exfiltration,
-   vault writes. If a ward nudges you toward a spell, heed it. Break-glass
-   exists (`snx ward`) but only the OWNER may cast it.
-4. MINT ON REPETITION: when a raw shell shape recurs (the mintward tally flags
-   it), mint a spell: `snx mint <name> --like <nearest-donor>`, fill the body,
-   smoke it, commit. The book is self-improving; leave it richer than you
-   found it.
-5. IDENTITY: before committing in any Everplay repo, repo-local
-   user.email = 240267972+Everplay-Tech@users.noreply.github.com
-   (GitHub blocks pushes exposing the private address). If unpushed commits
-   carry the private email: `snx git-reauthor <repo> --base origin/<branch>`.
-6. RELEASE PIPELINES (iOS family): every app ships by ONE dispatch —
-   `gh workflow run release.yml -f distribute=true`. Dry-run first via a
-   `release-dry-run/**` branch push (archive+sign+verify, no upload). Never
-   `gh run rerun` a bump-pushing workflow (tag guard fires) — fresh-dispatch.
-   Cloud signing needs the App-Manager ASC key; "Cloud signing permission
-   error" = wrong key, swap don't debug.
-
-## One-liner mental model
-
-> route → cast → read the receipt → (repeat) → mint what recurs.
+Noldorian does not install a spellbook. If this machine already has `snx`,
+use it. Do not clone private repositories or set GITHUB_TOKEN to install
+Noldorian — `python3 -m pip install noldorian` is the install path.
 """
 
 BOOTSTRAP_HINT = """\
-# Quick bootstrap (copy-paste)
+# Quick install
 
-curl -fsSL \\
-  https://raw.githubusercontent.com/E-TECH-PLAYTECH/noldorian/main/bootstrap.sh \\
-  | bash -s -- --all
+python3 -m pip install noldorian
+# or
+uv tool install noldorian
 
-# The optional --spells path additionally requires authenticated gh because
-# the Everplay spellbook is a separate private repository.
+Then: noldorian doctor
 """
 
 OWNER_ACTIONS = """\
@@ -172,9 +96,9 @@ is not completion.
 
 1. Do one bounded owner action at a time. Name the exact app, screen, and gate.
 2. Never paste a passcode, token, API key, password, auth header, or private
-   screenshot into chat. For credentials, use `keyabra`'s hidden prompt and
-   provider validation; report only identity and outcome.
-3. Treat “I can purchase” as capability, not authorization. The owner must
+   screenshot into chat. For credentials, use `xabra`'s hidden prompt
+   (`xabra env set` / `xabra run --env`); report only identity and outcome.
+3. Treat "I can purchase" as capability, not authorization. The owner must
    explicitly confirm `purchase <product>` before a payment flow starts and
    performs the final confirmation themselves.
 4. If the agent reports Full access but the runtime is restricted, do not fake

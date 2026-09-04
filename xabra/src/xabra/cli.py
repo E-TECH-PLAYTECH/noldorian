@@ -1,19 +1,4 @@
-"""xabra — install / update / open Everplay-Tech direct-distribution apps.
-
-Flag-driven, one action per invocation:
-
-    xabra --list
-    xabra --app dud3runner --status
-    xabra --app dud3runner --install [--yes] [--dmg PATH]
-    xabra --app dud3runner --update  [--yes]
-    xabra --update --all [--yes]
-    xabra --app dud3runner --update --protocol [--yes]
-    xabra --app dud3runner --open
-    xabra --doctor
-
-`--json` on anything prints the receipt as JSON for agents; mutating actions
-always bank a receipt file regardless.
-"""
+"""xabra — Noldorian operator CLI (vault subcommands + verified-install flags)."""
 
 from __future__ import annotations
 
@@ -94,11 +79,15 @@ def act_list(apps: dict, as_json: bool) -> int:
     if as_json:
         json.dump(rows, sys.stdout, indent=2)
         print()
-    else:
-        for name, row in sorted(rows.items()):
-            mark = row.get("version") or ("installed" if row.get("installed") else "not installed")
-            build = f" ({row['build']})" if row.get("build") else ""
-            print(f"{name:12} {row['kind']:4} {mark}{build}   {row.get('repo') or ''}")
+        return 0
+    if not rows:
+        print("xabra: no apps in the operator registry (default is empty).")
+        print("  add entries to ~/.config/noldorian/apps.json")
+        return 0
+    for name, row in sorted(rows.items()):
+        mark = row.get("version") or ("installed" if row.get("installed") else "not installed")
+        build = f" ({row['build']})" if row.get("build") else ""
+        print(f"{name:12} {row['kind']:4} {mark}{build}   {row.get('repo') or ''}")
     return 0
 
 
@@ -208,25 +197,43 @@ def act_open(apps: dict, name: str | None, as_json: bool) -> int:
 
 
 def act_doctor(as_json: bool) -> int:
-    checks = {}
-    gh = shutil.which("gh")
-    checks["gh"] = gh or "MISSING — brew install gh"
-    if gh:
-        auth = subprocess.run([gh, "auth", "status"], capture_output=True, text=True)
-        checks["gh_auth"] = "ok" if auth.returncode == 0 else (auth.stderr or auth.stdout).strip()[:200]
-    for tool in ("hdiutil", "spctl", "codesign", "ditto"):
-        checks[tool] = shutil.which(tool) or "MISSING"
-    ok = all("MISSING" not in str(v) and v is not None for v in checks.values()) and checks.get("gh_auth") == "ok"
-    emit({"action": "doctor", "app": "-", "ok": ok, "checks": checks}, as_json)
-    return 0 if ok else 1
+    from noldorian.doctor import doctor_report
+
+    report = doctor_report()
+    checks: dict = {"doctor": report}
+    if sys.platform == "darwin":
+        checks["macos_tools"] = {
+            tool: shutil.which(tool) or "MISSING"
+            for tool in ("hdiutil", "spctl", "codesign", "ditto")
+        }
+    checks["gh"] = shutil.which("gh")
+    emit({"action": "doctor", "app": "-", "ok": bool(report.get("ok")), "checks": checks}, as_json)
+    return 0 if report.get("ok") else 1
 
 
 # ---------------------------------------------------------------- entry
 
+OPERATOR_COMMANDS = {"run", "env", "pypi", "copy", "macos-keychain"}
+
+
 def main(argv: list[str] | None = None) -> int:
+    raw = list(argv if argv is not None else sys.argv[1:])
+    if raw and raw[0] in OPERATOR_COMMANDS:
+        from xabra.operator import main as operator_main
+
+        return operator_main(raw)
+    if not raw or raw[0] in ("-h", "--help", "help"):
+        from xabra.operator import help_text
+
+        print(help_text())
+        return 0
+    if raw[0] in ("--version", "-V", "version"):
+        print(f"xabra {__version__}")
+        return 0
+
     ap = argparse.ArgumentParser(
         prog="xabra",
-        description="Install, update, and open Everplay-Tech direct-distribution apps.")
+        description="Noldorian operator CLI: vault subcommands or verified-install flags.")
     ap.add_argument("--app", metavar="NAME", help="target app (see --list)")
     action = ap.add_mutually_exclusive_group()
     action.add_argument("--list", action="store_true", help="known apps + installed state")
@@ -234,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     action.add_argument("--install", action="store_true", help="fetch, verify, install latest")
     action.add_argument("--update", action="store_true", help="install only if newer resolves")
     action.add_argument("--open", action="store_true", help="open the installed app")
-    action.add_argument("--doctor", action="store_true", help="check gh auth + macOS tools")
+    action.add_argument("--doctor", action="store_true", help="install / vault / tools (broker optional)")
     ap.add_argument("--all", action="store_true", help="with --update: every known app")
     ap.add_argument("--protocol", action="store_true",
                     help="with --update: repoint the app's MCP enrollment at the installed binary")
@@ -242,7 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--yes", action="store_true", help="skip the confirm prompt")
     ap.add_argument("--json", action="store_true", help="print the receipt as JSON")
     ap.add_argument("--version", action="version", version=f"xabra {__version__}")
-    args = ap.parse_args(argv)
+    args = ap.parse_args(raw)
 
     apps = load_registry()
     if args.list or (not args.app and not any(

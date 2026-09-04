@@ -6,7 +6,7 @@ import inspect
 import os
 from pathlib import Path
 
-__version__ = "0.1.1"
+__version__ = "0.2.1"
 
 
 def anchor_dir(path: str | os.PathLike[str] | None = None) -> Path:

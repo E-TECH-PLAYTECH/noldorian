@@ -4,20 +4,21 @@ build-backend = "hatchling.build"
 
 [project]
 name = "noldorian"
-version = "0.2.0"
-description = "Agent-safe discovery and policy-bound use of local credential capabilities"
+version = "0.2.1"
+description = "Human-gated local credential vault, operator CLIs, and optional capability-broker client"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 authors = [{ name = "Everplay-Tech LLC" }]
-keywords = ["agents", "credentials", "mcp", "security", "secrets", "unix-socket"]
+keywords = ["agents", "credentials", "mcp", "security", "secrets", "vault"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Environment :: Console",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: Apache Software License",
   "Operating System :: MacOS",
+  "Operating System :: POSIX",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Topic :: Security",
@@ -28,16 +29,15 @@ dependencies = []
 [project.scripts]
 noldorian = "noldorian.cli:main"
 noldorian-mcp = "noldorian.mcp:main"
-keyabra = "keyabra.cli:main"
 xadabra = "xadabra.cli:main"
 xabra = "xabra.cli:main"
 abra = "binabra.cli:main"
 xalakazam = "xalakazam.cli:main"
+keyabra = "keyabra.cli:main"
 
 [project.urls]
-Documentation = "https://github.com/E-TECH-PLAYTECH/noldorian#readme"
-Issues = "https://github.com/E-TECH-PLAYTECH/noldorian/issues"
-Repository = "https://github.com/E-TECH-PLAYTECH/noldorian"
+Documentation = "https://pypi.org/project/noldorian/"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/noldorian"]
@@ -48,13 +48,11 @@ packages = ["src/noldorian"]
 "xabra/src/xabra" = "xabra"
 "binabra/src/binabra" = "binabra"
 "xalakazam/src/xalakazam" = "xalakazam"
-"keyabra/scripts/install_broker_macos.sh" = "noldorian/install_broker_macos.sh"
 
 [tool.hatch.build.targets.sdist]
 include = [
   "/src/noldorian",
   "/keyabra/src/keyabra",
-  "/keyabra/scripts/install_broker_macos.sh",
   "/xadabra/src/xadabra",
   "/xabra/src/xabra",
   "/binabra/src/binabra",

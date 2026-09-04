@@ -1,4 +1,4 @@
-"""Zero-dependency MCP server for public Noldorian capability operations."""
+"""Zero-dependency MCP server for public Noldorian operations."""
 
 from __future__ import annotations
 
@@ -9,10 +9,61 @@ from typing import Any, Callable, Dict, Optional, TextIO
 
 from noldorian import __version__
 from noldorian.client import BrokerClient, DEFAULT_SOCKET_PATH
+from noldorian.doctor import doctor_report
 from noldorian.errors import BrokerError
+from noldorian.vault import (
+    child_run_template,
+    default_vault_path,
+    list_vault_names,
+)
 
+ALWAYS_TOOLS = [
+    {
+        "name": "doctor",
+        "description": (
+            "Report whether Noldorian is installed, the vault contract path, "
+            "and whether the optional Gondolin socket is present. Never returns "
+            "credentials."
+        ),
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "orient",
+        "description": "How to install Noldorian and use the vault on this machine.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "topic": {
+                    "type": "string",
+                    "enum": ["deploy", "bootstrap", "owner-actions", "all"],
+                }
+            },
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "list_vault_names",
+        "description": (
+            "List logical names in the local 0600 vault. Returns names only, "
+            "never values. Empty if no vault is present."
+        ),
+        "inputSchema": {"type": "object", "properties": {}, "additionalProperties": False},
+    },
+    {
+        "name": "child_run_template",
+        "description": (
+            "Return the owner-run command template that loads the vault into a "
+            "child process. Does not execute the command or return secrets."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"command": {"type": "string"}},
+            "additionalProperties": False,
+        },
+    },
+]
 
-TOOLS = [
+EXTENSION_TOOLS = [
     {
         "name": "broker_status",
         "description": "Check whether the local Noldorian capability broker is ready.",
@@ -90,13 +141,53 @@ TOOLS = [
     },
 ]
 
+TOOLS = ALWAYS_TOOLS + EXTENSION_TOOLS
+
+
+def _orient(args: Dict[str, Any]) -> Dict[str, Any]:
+    try:
+        import xalakazam
+    except ImportError:
+        return {"error": "xalakazam surface is unavailable"}
+    topic = (args or {}).get("topic") or "deploy"
+    docs = {
+        "deploy": xalakazam.DEPLOY,
+        "bootstrap": xalakazam.BOOTSTRAP_HINT,
+        "owner-actions": xalakazam.OWNER_ACTIONS,
+    }
+    if topic == "all":
+        return {"text": "\n\n".join(docs.values())}
+    if topic not in docs:
+        return {"error": f"unknown topic {topic!r}"}
+    return {"text": docs[topic]}
+
+
+def _list_vault_names(_args: Dict[str, Any]) -> Dict[str, Any]:
+    vault = default_vault_path()
+    if not vault.is_file():
+        return {"vault": str(vault), "present": False, "names": []}
+    try:
+        names = list_vault_names(vault)
+    except (OSError, ValueError, PermissionError) as exc:
+        return {"vault": str(vault), "present": True, "names": [], "error": str(exc)}
+    return {"vault": str(vault), "present": True, "names": names}
+
+
+def _child_run_template(args: Dict[str, Any]) -> Dict[str, Any]:
+    command = args.get("command") if isinstance(args.get("command"), str) else "<command>"
+    return child_run_template(command)
+
 
 class McpServer:
-    """Small JSON-RPC loop around a public-only :class:`BrokerClient`."""
+    """JSON-RPC loop: vault/doctor always; Gondolin tools if the client is used."""
 
     def __init__(self, client: Optional[BrokerClient] = None) -> None:
         self.client = client or BrokerClient(DEFAULT_SOCKET_PATH)
         self.dispatch: Dict[str, Callable[[Dict[str, Any]], Dict[str, Any]]] = {
+            "doctor": lambda _args: doctor_report(),
+            "orient": _orient,
+            "list_vault_names": _list_vault_names,
+            "child_run_template": _child_run_template,
             "broker_status": lambda _args: self.client.status(),
             "list_credential_capabilities": lambda _args: self.client.list_capabilities(),
             "list_credential_enrollment_templates": lambda _args: self.client.list_enrollment_templates(),
@@ -185,12 +276,10 @@ class McpServer:
                         "capabilities": {"tools": {}},
                         "serverInfo": {"name": "noldorian", "version": __version__},
                         "instructions": (
-                            "List credential capabilities before authenticated work. If a "
-                            "needed capability is absent or unavailable, list reviewed "
-                            "enrollment templates, then call request_credential_enrollment "
-                            "with a template and purpose; Noldorian will open the "
-                            "human-only prompt. Poll its status. Never inspect vaults or "
-                            "request secret values."
+                            "Call doctor first. Everyday credential use is the owner-run "
+                            "vault: list_vault_names then child_run_template. Never request "
+                            "secret values. Gondolin broker tools are optional and fail "
+                            "with extension absent when no socket is present."
                         ),
                     },
                 )

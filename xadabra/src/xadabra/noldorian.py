@@ -11,7 +11,7 @@ from pathlib import Path
 
 DEFAULT_ORG = "Everplay-Tech"
 DEFAULT_REPO = "noldorian"
-DEFAULT_TAG = "v0.2.0"
+DEFAULT_TAG = "v0.2.1"
 PACKAGES = ("binabra", "keyabra", "xadabra")
 PYPI_VERSIONS = ("0.1.0", "0.1.1")
 
@@ -45,8 +45,8 @@ def cmd_guide(_: argparse.Namespace) -> int:
             =============================================
 
             The normal install is the unified public distribution:
-              python3 -m pip install noldorian==0.2.0
-              # installs noldorian, keyabra, xadabra, xabra, abra, xalakazam
+              python3 -m pip install noldorian
+              # installs noldorian, xabra, xadabra, abra, xalakazam
 
             Legacy source workflow (operator-only):
               xadabra noldorian pack          # scaffold ~/noldorian
@@ -294,15 +294,18 @@ def cmd_yank(args: argparse.Namespace) -> int:
 
 
 def cmd_script(args: argparse.Namespace) -> int:
-    path = Path(__file__).resolve().parent / "templates" / "noldorian-private-github.sh"
+    text = (
+        "python3 -m pip install noldorian\n"
+        "noldorian doctor\n"
+        "xabra env init\n"
+    )
     if args.print_path:
-        print(path)
+        print("pip-install noldorian (no private template file)")
         return 0
-    text = path.read_text(encoding="utf-8")
-    print(text)
+    print(text, end="")
     if args.copy:
         subprocess.run(["pbcopy"], input=text, text=True, check=False)
-        print("# copied to clipboard — run: xadabra", file=sys.stderr)
+        print("# copied to clipboard", file=sys.stderr)
     return 0
 
 

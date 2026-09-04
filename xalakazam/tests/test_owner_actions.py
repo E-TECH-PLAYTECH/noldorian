@@ -12,7 +12,7 @@ class OwnerActionRiteTests(unittest.TestCase):
     def test_playbook_contains_pause_and_secret_boundary(self) -> None:
         self.assertIn("OWNER CHECKPOINT", OWNER_ACTIONS)
         self.assertIn("purchase <product>", OWNER_ACTIONS)
-        self.assertIn("keyabra", OWNER_ACTIONS)
+        self.assertIn("xabra", OWNER_ACTIONS)
         self.assertIn("noldorian.owner-action-checkpoint/v1", OWNER_ACTIONS)
 
     def test_cli_exposes_owner_action_playbook(self) -> None:

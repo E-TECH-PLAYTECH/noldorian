@@ -27,10 +27,7 @@ dependencies = []
 xadabra = "xadabra.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/xadabra/templates/noldorian-private-github.sh" = "xadabra/templates/noldorian-private-github.sh"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xadabra"]

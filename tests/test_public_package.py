@@ -83,6 +83,10 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertEqual(
             names,
             {
+                "doctor",
+                "orient",
+                "list_vault_names",
+                "child_run_template",
                 "broker_status",
                 "list_credential_capabilities",
                 "list_credential_enrollment_templates",
