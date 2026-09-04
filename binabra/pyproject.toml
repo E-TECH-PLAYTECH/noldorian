@@ -27,7 +27,7 @@ dependencies = []
 abra = "binabra.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/binabra"]

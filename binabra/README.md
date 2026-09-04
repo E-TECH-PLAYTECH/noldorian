@@ -4,14 +4,12 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Portable **bin directory anchor** for shell scripts. Install once, reuse the same header anywhere.
 
-- **PyPI:** `binabra`
-- **CLI:** `abra` (short invocation)
-- **Tier:** Noldorian (pip operator tool — not an `snx` spell). See `~/spells/NOLDORIAN.md`
+Ships inside the unified public package (`abra` CLI).
 
 ## Install
 
 ```bash
-pip install binabra
+python3 -m pip install noldorian
 ```
 
 Ensure pip's script dir is on PATH (macOS example):
@@ -92,12 +90,12 @@ twine upload dist/*
 ### 4. Verify
 
 ```bash
-pip install binabra
+python3 -m pip install noldorian
 abra --version
 abra embed
 ```
 
-PyPI project page: https://pypi.org/project/binabra/
+PyPI project page: https://pypi.org/project/noldorian/
 
 ## Python API
 

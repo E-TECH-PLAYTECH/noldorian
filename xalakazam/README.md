@@ -1,31 +1,18 @@
-# xalakazam — the Everplay orienter
+# xalakazam
 
-`xalakazam --owner-actions` prints the Noldorian owner checkpoint rite: ask
-once for an owner-only UI, purchase, device, secret, client-login, or host
-permission action; pause; then perform one fresh verification after the
-owner's non-secret confirmation. It never grants permissions or accepts
-credentials in chat.
-
-Callable memory: `xalakazam --deploy` (Noldorian playbook) and
-`xalakazam --spells` (snx spellbook playbook) print everything an agent or
-human needs to install and strategically use the Everplay tooling on any
-machine — docs are embedded in the package, no checkout needed.
+Noldorian orienter: callable memory for installing and using the public
+package on any machine. Docs are embedded in the wheel.
 
 ```
-pip install "git+https://github.com/Everplay-Tech/noldorian.git#subdirectory=xalakazam"
+python3 -m pip install noldorian
 xalakazam --deploy
-xalakazam --spells
-xalakazam --cursor-sdk-enable
+xalakazam --owner-actions
 ```
 
-`--cursor-sdk-enable` opens Cursor's User API Key page, then hands the copied
-key directly to Keyabra's hidden prompt. Keyabra validates the key, stores it
-in Google Secret Manager over stdin, reads it back, and validates it again.
-Neither tool prints or persists the credential outside the designated secret.
-
-This rite is for bounded internal evaluation. It stores a credential only; it
-does not install or redistribute the Cursor SDK and does not grant production,
-customer-delivery, or redistribution rights. Those uses require separate
-commercial-rights clearance and dependency review.
+`xalakazam --owner-actions` prints the owner checkpoint rite: ask once for an
+owner-only UI, purchase, device, secret, client-login, or host permission
+action; pause; then perform one fresh verification after the owner's
+non-secret confirmation. Credentials go through `xabra env set` / `xabra run`,
+never through chat.
 
 Licensed under the [Apache License 2.0](LICENSE).

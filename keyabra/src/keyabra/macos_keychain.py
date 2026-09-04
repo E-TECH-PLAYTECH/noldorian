@@ -113,7 +113,7 @@ def unlock_keychain_from_vault(
     unlocker: Unlocker = _unlock_with_security_framework,
     probe_runner: ProbeRunner = _codesign_probe,
 ) -> dict[str, object]:
-    """Unlock a keychain from a 0600 Keyabra vault and return a redacted receipt."""
+    """Unlock a keychain from a 0600 Noldorian vault and return a redacted receipt."""
     if not credential_name or not credential_name.strip():
         raise ValueError("credential name must not be empty")
 
@@ -138,7 +138,7 @@ def unlock_keychain_from_vault(
             probe_runner(probe_identity)
 
         return {
-            "schema": "keyabra.macos-keychain/v1",
+            "schema": "noldorian.macos-keychain/v1",
             "vault": str(vault_path),
             "credential_name": credential_name,
             "keychain": str(keychain_path),

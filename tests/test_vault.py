@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from noldorian.vault import (
     load_env_file,
@@ -122,3 +123,34 @@ class VaultContractTests(unittest.TestCase):
         from xabra import BUILTIN_APPS
 
         self.assertEqual(BUILTIN_APPS, {})
+
+    def test_default_vault_path_prefers_canonical(self) -> None:
+        from noldorian import vault as vault_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            canonical_dir = home / ".config" / "noldorian"
+            legacy_dir = home / ".config" / "keyabra"
+            canonical_dir.mkdir(parents=True)
+            legacy_dir.mkdir(parents=True)
+            canonical = write_vault(canonical_dir / "vault.env", "TOKEN=canonical\n")
+            write_vault(legacy_dir / "keyabra.env", "TOKEN=legacy\n")
+            with mock.patch.object(vault_mod, "ENV_DIR", canonical_dir), mock.patch.object(
+                vault_mod, "LEGACY_ENV_DIR", legacy_dir
+            ):
+                self.assertEqual(vault_mod.default_vault_path(), canonical)
+
+    def test_default_vault_path_falls_back_to_legacy(self) -> None:
+        from noldorian import vault as vault_mod
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            canonical_dir = home / ".config" / "noldorian"
+            legacy_dir = home / ".config" / "keyabra"
+            canonical_dir.mkdir(parents=True)
+            legacy_dir.mkdir(parents=True)
+            legacy = write_vault(legacy_dir / "keyabra.env", "TOKEN=legacy\n")
+            with mock.patch.object(vault_mod, "ENV_DIR", canonical_dir), mock.patch.object(
+                vault_mod, "LEGACY_ENV_DIR", legacy_dir
+            ):
+                self.assertEqual(vault_mod.default_vault_path(), legacy)

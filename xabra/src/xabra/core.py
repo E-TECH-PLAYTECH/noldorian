@@ -105,6 +105,8 @@ def resolve_source(spec: dict) -> dict:
 
 def fetch(source: dict, workdir: Path) -> Path:
     """Materialize the payload (dmg or tar.gz) from a resolved source into workdir."""
+    if source["type"] == "local":
+        return Path(source["resolved"])
     gh = require_gh()
     if source["type"] == "release":
         out = sh([gh, "release", "download", source["resolved"], "-R", source["repo"],
@@ -126,8 +128,6 @@ def fetch(source: dict, workdir: Path) -> Path:
         if not payloads:
             raise SystemExit(f"xabra: artifact {source['resolved']} contains no dmg/tar.gz")
         return payloads[0]
-    if source["type"] == "local":
-        return Path(source["resolved"])
     raise SystemExit(f"xabra: unknown source type {source['type']}")
 
 

@@ -4,12 +4,12 @@ Licensed under the [Apache License 2.0](LICENSE).
 
 Paste-once runner for AI shell blocks. No more hand-editing `{{placeholders}}` in command blocks.
 
-**Noldorian** tier (pip operator tools — not `snx` spells). Siblings: **binabra**, **keyabra**.
+**Noldorian** tier (pip operator tools — not `snx` spells). Ships inside `pip install noldorian`.
 
 ## Install
 
 ```bash
-pip install xadabra
+python3 -m pip install noldorian
 ```
 
 ## Example
@@ -95,9 +95,8 @@ xadabra noldorian script --path
 ## Publish
 
 ```bash
-pip install binabra keyabra build twine
-cd ~/noldorian/xadabra && python3 -m build
-keyabra pypi publish
+python3 -m pip install noldorian build twine
+xabra pypi publish
 ```
 
 ## Tests

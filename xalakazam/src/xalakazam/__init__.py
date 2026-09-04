@@ -45,7 +45,7 @@ Every consumer thereafter:
 (also `noldorian run --env-file ... -- <cmd>`). Vaults hold ids and pointers
 (`NAME__FILE=/path`, `NAME__CMD=cmd`) so key material is not duplicated.
 The file must be 0600 or Noldorian refuses. If `~/.config/noldorian/` has no
-vault yet, a 0.2.0-era file under `~/.config/keyabra/` is still read.
+vault yet, a 0.2.0-era file at `~/.config/keyabra/keyabra.env` is still read.
 
 ## Agents
 

@@ -61,7 +61,7 @@ def run_pipeline(
 
     if cloud and not allow_spells and script_uses_spells(runnable):
         print(
-            "xadabra: cloud policy blocks snx — spells cast on MacBook Pro (head), not in cloud",
+            "xadabra: cloud policy blocks snx — spells run on the operator machine, not in cloud",
             file=sys.stderr,
         )
         print("xadabra: use plain shell in cloud scripts, or --allow-spells to override", file=sys.stderr)

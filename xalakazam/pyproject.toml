@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "xalakazam"
 version = "0.1.5"
-description = "The Everplay orienter — callable memory for deploying and strategically using Noldorian and the snx spellbook"
+description = "Noldorian orienter — callable memory for installing and using the public package"
 readme = "README.md"
 requires-python = ">=3.8"
 license = "Apache-2.0"
@@ -26,7 +26,7 @@ dependencies = []
 xalakazam = "xalakazam.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xalakazam"]

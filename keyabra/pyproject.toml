@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "keyabra"
-version = "0.3.0"
-description = "Human-gated secret intake and agent-safe credential capability brokering"
+version = "0.2.1"
+description = "Undocumented 0.2.0 compatibility shim inside noldorian — use xabra"
 readme = "README.md"
 requires-python = ">=3.8"
 license = "Apache-2.0"
@@ -28,7 +28,7 @@ dependencies = []
 keyabra = "keyabra.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/keyabra"]

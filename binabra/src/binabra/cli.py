@@ -44,7 +44,7 @@ def main(argv: list[str] | None = None) -> int:
   abra colocate [dest-dir]         copy abra into a bin folder
   abra <tool> [args...]            legacy: run sibling (same as exec)
 
-  pip install binabra
+  python3 -m pip install noldorian
 """
         )
         return 0

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xabra"
-version = "0.3.1"
-description = "Install, update, and open Everplay-Tech direct-distribution apps (the ones that don't come from the App Store)"
+version = "0.2.1"
+description = "Noldorian operator CLI: vault subcommands and verified install from an operator registry"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "Apache-2.0"
@@ -27,7 +27,7 @@ dependencies = []
 xabra = "xabra.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/E-TECH-PLAYTECH/noldorian"
+Homepage = "https://pypi.org/project/noldorian/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/xabra"]
