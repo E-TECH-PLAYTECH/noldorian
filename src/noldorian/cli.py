@@ -78,6 +78,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    from noldorian.vault import ensure_canonical_home
+
+    ensure_canonical_home()
     raw_argv = list(argv if argv is not None else sys.argv[1:])
     family_commands = {
         "xadabra": ("xadabra.cli", "xadabra"),

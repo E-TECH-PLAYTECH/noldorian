@@ -5,10 +5,12 @@ Ships with `pip install noldorian`. Two jobs, one command:
 **Vault** (paste-once, child env, nothing on argv):
 
 ```bash
-xabra env init
 xabra env set TOKEN_NAME
 xabra run --env-file ~/.config/noldorian/vault.env -- ./deploy.sh
 ```
+
+The first `noldorian` or `xabra` command creates `~/.config/noldorian/vault.env`.
+Do not mkdir that directory by hand.
 
 **Verified install** from *your* registry (default empty):
 

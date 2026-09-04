@@ -6,7 +6,7 @@ embedded — the command works wherever the package is pip-installed.
 
 from __future__ import annotations
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 DEPLOY = """\
 # XALAKAZAM --deploy — Noldorian: what it is, how to install it, how to use it
@@ -33,9 +33,10 @@ Install one public package:
 
 ## Vault
 
-Owner provisions once:
+The first `noldorian` or `xabra` command (including `noldorian doctor`)
+creates `~/.config/noldorian/` (0700) and an empty `vault.env` (0600).
+Agents must not mkdir that directory. Then the owner fills names:
 
-    xabra env init
     xabra env set TOKEN_NAME
 
 Every consumer thereafter:
@@ -44,8 +45,9 @@ Every consumer thereafter:
 
 (also `noldorian run --env-file ... -- <cmd>`). Vaults hold ids and pointers
 (`NAME__FILE=/path`, `NAME__CMD=cmd`) so key material is not duplicated.
-The file must be 0600 or Noldorian refuses. If `~/.config/noldorian/` has no
-vault yet, a 0.2.0-era file at `~/.config/keyabra/keyabra.env` is still read.
+The file must be 0600 or Noldorian refuses. A leftover file at
+`~/.config/keyabra/keyabra.env` is not the live vault. If it still exists,
+Noldorian will not create an empty canonical vault on top of it.
 
 ## Agents
 

@@ -8,8 +8,11 @@ comments, and two indirections resolved at run time:
 
 ``xabra run --env-file PATH -- cmd ...`` (also ``noldorian run``) loads the
 vault into the child environment in-process only. Canonical vault directory
-is ``~/.config/noldorian/``. If that directory has no vault file, a 0.2.0
-legacy path under ``~/.config/keyabra/`` is read so existing files still work.
+is ``~/.config/noldorian/``. The first Noldorian CLI invocation creates that
+directory and an empty ``vault.env`` (0600). Agents must not mkdir it.
+A leftover ``~/.config/keyabra/keyabra.env`` is not the live Noldorian vault.
+If that file still exists, Noldorian will not create an empty canonical vault
+on top of it.
 """
 
 from __future__ import annotations
@@ -27,15 +30,63 @@ LEGACY_VAULT_NAME = "keyabra.env"
 PROBE_SCHEMA = "noldorian.env-probe/v1"
 
 
-def default_vault_path() -> Path:
-    """Canonical vault if present; otherwise the 0.2.0 legacy file; else canonical."""
+def leftover_vault_path() -> Path:
+    return Path(LEGACY_ENV_DIR) / LEGACY_VAULT_NAME
 
-    canonical = ENV_DIR / DEFAULT_VAULT_NAME
+
+def leftover_blocks_canonical() -> bool:
+    """True when a leftover vault file would be hidden by an empty canonical file."""
+
+    canonical = Path(ENV_DIR) / DEFAULT_VAULT_NAME
+    leftover = leftover_vault_path()
+    return leftover.is_file() and not canonical.is_file()
+
+
+def ensure_canonical_home() -> Path:
+    """Create ``~/.config/noldorian`` (0700) and empty ``vault.env`` (0600).
+
+    Does not copy leftover files and does not create ``~/.config/keyabra``.
+    If leftover ``keyabra.env`` still exists and canonical ``vault.env`` does
+    not, this does nothing: an empty canonical vault must not sit on top of
+    leftover secrets. Remove the leftover, then rerun a Noldorian CLI.
+    """
+
+    canonical = Path(ENV_DIR) / DEFAULT_VAULT_NAME
+    leftover = leftover_vault_path()
+    if leftover.is_file() and not canonical.is_file():
+        return leftover
+
+    env_dir = Path(ENV_DIR)
+    env_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(env_dir, 0o700)
+    if not canonical.exists():
+        try:
+            fd = os.open(str(canonical), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+            try:
+                os.write(
+                    fd,
+                    (
+                        b"# Noldorian vault (0600 dotenv). Never put values on argv.\n"
+                        b"# Fill names with: xabra env set NAME\n"
+                    ),
+                )
+            finally:
+                os.close(fd)
+        except FileExistsError:
+            pass
+    os.chmod(canonical, 0o600)
+    return canonical
+
+
+def default_vault_path() -> Path:
+    """Canonical vault if present; otherwise the 0.2.0 leftover file; else canonical."""
+
+    canonical = Path(ENV_DIR) / DEFAULT_VAULT_NAME
     if canonical.is_file():
         return canonical
-    legacy = LEGACY_ENV_DIR / LEGACY_VAULT_NAME
-    if legacy.is_file():
-        return legacy
+    leftover = Path(LEGACY_ENV_DIR) / LEGACY_VAULT_NAME
+    if leftover.is_file():
+        return leftover
     return canonical
 
 

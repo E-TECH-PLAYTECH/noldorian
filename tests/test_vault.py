@@ -8,6 +8,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from noldorian import vault as vault_mod
 from noldorian.vault import (
     load_env_file,
     load_env_value,
@@ -24,7 +25,22 @@ def write_vault(path: Path, text: str) -> Path:
     return path
 
 
-class VaultContractTests(unittest.TestCase):
+class IsolatedHomeMixin:
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        root = Path(self._tmp.name)
+        self.env_dir = root / "noldorian"
+        self.legacy_dir = root / "keyabra"
+        env_patch = mock.patch.object(vault_mod, "ENV_DIR", self.env_dir)
+        legacy_patch = mock.patch.object(vault_mod, "LEGACY_ENV_DIR", self.legacy_dir)
+        env_patch.start()
+        legacy_patch.start()
+        self.addCleanup(env_patch.stop)
+        self.addCleanup(legacy_patch.stop)
+
+
+class VaultContractTests(IsolatedHomeMixin, unittest.TestCase):
     def test_probe_direct_value_returns_metadata_without_secret(self) -> None:
         secret = "direct-secret-sentinel"
         with tempfile.TemporaryDirectory() as tmp:
@@ -160,3 +176,24 @@ class VaultContractTests(unittest.TestCase):
                 vault_mod, "LEGACY_ENV_DIR", legacy_dir
             ):
                 self.assertEqual(vault_mod.default_vault_path(), legacy)
+
+    def test_ensure_canonical_home_creates_empty_vault_without_leftover(self) -> None:
+        created = vault_mod.ensure_canonical_home()
+        self.assertEqual(created, self.env_dir / "vault.env")
+        self.assertTrue(created.is_file())
+        self.assertEqual(oct(self.env_dir.stat().st_mode & 0o777), "0o700")
+        self.assertEqual(oct(created.stat().st_mode & 0o777), "0o600")
+        text = created.read_text()
+        self.assertTrue(text.startswith("# Noldorian vault"))
+        self.assertFalse(any("=" in line and not line.startswith("#") for line in text.splitlines()))
+        self.assertFalse((self.legacy_dir / "keyabra.env").exists())
+        self.assertFalse(self.legacy_dir.exists())
+
+    def test_ensure_canonical_home_does_not_copy_or_hide_leftover(self) -> None:
+        self.legacy_dir.mkdir(parents=True)
+        leftover = write_vault(self.legacy_dir / "keyabra.env", "TOKEN=leftover-sentinel\n")
+        created = vault_mod.ensure_canonical_home()
+        self.assertEqual(created, leftover)
+        self.assertFalse((self.env_dir / "vault.env").exists())
+        self.assertEqual(leftover.read_text(), "TOKEN=leftover-sentinel\n")
+        self.assertTrue(vault_mod.leftover_blocks_canonical())

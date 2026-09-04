@@ -322,6 +322,9 @@ class McpServer:
 def main() -> None:
     """Run the Noldorian MCP server over standard input/output."""
 
+    from noldorian.vault import ensure_canonical_home
+
+    ensure_canonical_home()
     McpServer().serve(sys.stdin, sys.stdout)
 
 

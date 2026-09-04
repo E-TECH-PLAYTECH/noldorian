@@ -7,6 +7,9 @@ from noldorian.vault import (
     LEGACY_ENV_DIR,
     child_run_template,
     default_vault_path,
+    ensure_canonical_home,
+    leftover_blocks_canonical,
+    leftover_vault_path,
     list_vault_names,
     load_env_file,
     load_env_value,
@@ -23,6 +26,9 @@ __all__ = [
     "LEGACY_ENV_DIR",
     "child_run_template",
     "default_vault_path",
+    "ensure_canonical_home",
+    "leftover_blocks_canonical",
+    "leftover_vault_path",
     "list_vault_names",
     "load_env_file",
     "load_env_value",
@@ -30,4 +36,4 @@ __all__ = [
     "prompt_secret",
     "run_with_env",
 ]
-__version__ = "0.2.1"
+__version__ = "0.2.2"

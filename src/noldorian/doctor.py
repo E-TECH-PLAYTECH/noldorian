@@ -9,12 +9,7 @@ from pathlib import Path
 
 from noldorian import __version__
 from noldorian.client import DEFAULT_SOCKET_PATH
-from noldorian.vault import (
-    ENV_DIR,
-    LEGACY_ENV_DIR,
-    default_vault_path,
-    list_vault_names,
-)
+from noldorian import vault as vault_mod
 
 
 def _which_cli(name: str) -> str | None:
@@ -34,9 +29,29 @@ def _which_cli(name: str) -> str | None:
 
 
 def _vault_section() -> dict[str, object]:
-    canonical = ENV_DIR / "vault.env"
-    legacy = LEGACY_ENV_DIR / "keyabra.env"
-    active = default_vault_path()
+    canonical = Path(vault_mod.ENV_DIR) / "vault.env"
+    leftover = vault_mod.leftover_vault_path()
+    leftover_present = leftover.is_file()
+    if leftover_present and not canonical.is_file():
+        return {
+            "canonical_dir": str(Path(vault_mod.ENV_DIR)),
+            "canonical_vault": str(canonical),
+            "legacy_dir": str(Path(vault_mod.LEGACY_ENV_DIR)),
+            "legacy_vault": str(leftover),
+            "leftover_present": True,
+            "active_vault": None,
+            "present": False,
+            "mode": None,
+            "names": [],
+            "error": (
+                "leftover vault file still present; noldorian will not create "
+                "an empty canonical vault.env on top of it. Backup and remove "
+                f"{leftover}, then rerun noldorian doctor so noldorian can "
+                "create ~/.config/noldorian itself."
+            ),
+        }
+    vault_mod.ensure_canonical_home()
+    active = vault_mod.default_vault_path()
     present = active.is_file()
     names: list[str] = []
     mode: str | None = None
@@ -44,14 +59,15 @@ def _vault_section() -> dict[str, object]:
     if present:
         try:
             mode = oct(active.stat().st_mode & 0o777)
-            names = list_vault_names(active)
+            names = vault_mod.list_vault_names(active)
         except (OSError, ValueError, PermissionError) as exc:
             error = str(exc)
     return {
-        "canonical_dir": str(ENV_DIR),
+        "canonical_dir": str(Path(vault_mod.ENV_DIR)),
         "canonical_vault": str(canonical),
-        "legacy_dir": str(LEGACY_ENV_DIR),
-        "legacy_vault": str(legacy),
+        "legacy_dir": str(Path(vault_mod.LEGACY_ENV_DIR)),
+        "legacy_vault": str(leftover),
+        "leftover_present": leftover_present,
         "active_vault": str(active) if present else None,
         "present": present,
         "mode": mode,

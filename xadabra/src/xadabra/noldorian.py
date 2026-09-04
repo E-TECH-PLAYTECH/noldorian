@@ -8,7 +8,7 @@ import sys
 import textwrap
 
 PYPI_PACKAGE = "noldorian"
-PYPI_VERSION = "0.2.1"
+PYPI_VERSION = "0.2.2"
 
 
 def cmd_guide(_: argparse.Namespace) -> int:
@@ -24,7 +24,9 @@ def cmd_guide(_: argparse.Namespace) -> int:
 
             Then:
               noldorian doctor
-              xabra env init
+
+            The first doctor run creates ~/.config/noldorian/vault.env.
+            Fill names with: xabra env set NAME
 
             This helper does not clone GitHub, pack sibling packages, or publish.
             Install is always: python3 -m pip install noldorian
@@ -57,7 +59,7 @@ def cmd_script(args: argparse.Namespace) -> int:
     text = (
         f"python3 -m pip install {PYPI_PACKAGE}\n"
         "noldorian doctor\n"
-        "xabra env init\n"
+        "xabra env set NAME\n"
     )
     if args.print_path:
         print("pip-install noldorian (no private template file)")

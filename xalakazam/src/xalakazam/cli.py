@@ -78,6 +78,9 @@ def _cmd_enable(argv: list[str]) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    from noldorian.vault import ensure_canonical_home
+
+    ensure_canonical_home()
     argv = list(argv if argv is not None else sys.argv[1:])
 
     if not argv or argv[0] in ("-h", "--help", "help"):

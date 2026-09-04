@@ -22,6 +22,10 @@ Then:
 noldorian doctor
 ```
 
+The first `noldorian` or `xabra` command creates `~/.config/noldorian/` (0700)
+and an empty `vault.env` (0600). Agents must not mkdir that directory. Fill
+names later with `xabra env set NAME` (hidden prompt). Values never print.
+
 Doctor works with no extra daemon. An optional Gondolin extension may expose a
 Unix-socket capability broker; missing it is not a failure for everyday vault
 use.
@@ -29,7 +33,6 @@ use.
 ## Vault
 
 ```bash
-xabra env init
 xabra env set TOKEN_NAME
 xabra run --env-file ~/.config/noldorian/vault.env -- your-command
 # equivalent:
@@ -39,8 +42,10 @@ noldorian run --env-file ~/.config/noldorian/vault.env -- your-command
 Vault lines: `NAME=value`, `NAME__FILE=/path` (contents at run time),
 `NAME__CMD=cmd` (stdout at run time). The file must be mode 0600.
 
-If `~/.config/noldorian/` has no vault yet, a 0.2.0-era file at
-`~/.config/keyabra/keyabra.env` is still read so existing vaults keep working.
+A leftover `~/.config/keyabra/keyabra.env` is not the live Noldorian vault.
+If that file still exists, `noldorian doctor` refuses to create an empty
+canonical vault on top of it. Backup and remove the leftover, then rerun
+`noldorian doctor` so the package can create `~/.config/noldorian` itself.
 
 ## Other CLIs
 

@@ -217,6 +217,9 @@ OPERATOR_COMMANDS = {"run", "env", "copy", "macos-keychain"}
 
 
 def main(argv: list[str] | None = None) -> int:
+    from noldorian.vault import ensure_canonical_home
+
+    ensure_canonical_home()
     raw = list(argv if argv is not None else sys.argv[1:])
     if raw and raw[0] in OPERATOR_COMMANDS:
         from xabra.operator import main as operator_main

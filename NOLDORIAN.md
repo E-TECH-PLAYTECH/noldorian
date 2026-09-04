@@ -8,7 +8,7 @@ require GitHub, a spellbook, or a privileged broker.
 | CLI | Role |
 |-----|------|
 | `noldorian` | doctor + optional extension client |
-| `xabra` | 0600 vault, `run --env-file`, hidden PyPI upload, verified install |
+| `xabra` | 0600 vault, `run --env-file`, verified install |
 | `xadabra` | `{{placeholder}}` script runner |
 | `xalakazam` | orienter / owner checkpoints |
 | `abra` | bin-directory anchor |

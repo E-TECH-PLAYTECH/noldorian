@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "xabra"
-version = "0.2.1"
+version = "0.2.2"
 description = "Noldorian operator CLI: vault subcommands and verified install from an operator registry"
 readme = "README.md"
 requires-python = ">=3.9"

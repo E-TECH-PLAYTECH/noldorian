@@ -81,6 +81,9 @@ def run_pipeline(
 
 
 def main(argv: list[str] | None = None) -> int:
+    from noldorian.vault import ensure_canonical_home
+
+    ensure_canonical_home()
     argv = list(argv if argv is not None else sys.argv[1:])
 
     if argv and argv[0] in ("--version", "-V", "version"):
