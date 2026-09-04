@@ -83,7 +83,7 @@ def _codesign_probe(identity: str) -> None:
     if not codesign:
         raise MacOSKeychainError("codesign is not available")
 
-    with tempfile.TemporaryDirectory(prefix="keyabra-codesign-") as directory:
+    with tempfile.TemporaryDirectory(prefix="xabra-codesign-") as directory:
         probe = Path(directory) / "probe"
         # ``copy2`` tries to preserve SIP-managed flags and metadata from
         # /usr/bin/true. macOS rejects that metadata write in a temporary

@@ -406,7 +406,7 @@ def _cmd_pypi(argv: list[str]) -> int:
 
 
 def _cmd_macos_keychain(argv: list[str]) -> int:
-    from keyabra.macos_keychain import MacOSKeychainError, unlock_keychain_from_vault
+    from xabra.macos_keychain import MacOSKeychainError, unlock_keychain_from_vault
 
     sub = argv[0] if argv else ""
     usage = (

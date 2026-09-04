@@ -10,7 +10,6 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 SHIPPED_ROOTS = (
     ROOT / "src" / "noldorian",
-    ROOT / "keyabra" / "src" / "keyabra",
     ROOT / "xabra" / "src" / "xabra",
     ROOT / "xadabra" / "src" / "xadabra",
     ROOT / "binabra" / "src" / "binabra",
@@ -43,6 +42,7 @@ FORBIDDEN_WHEEL_SUBSTRINGS = (
     "discord_gcp",
     "cursor_gcp",
     "clipabra",
+    "keyabra/",
 )
 
 
@@ -68,6 +68,11 @@ class ArtifactHygieneTests(unittest.TestCase):
                 if snippet in text:
                     hits.append(f"{path.relative_to(ROOT)}: {snippet}")
         self.assertEqual(hits, [])
+
+    def test_public_package_has_no_keyabra_console_script(self) -> None:
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertNotIn("keyabra =", pyproject)
+        self.assertNotIn("keyabra/src/keyabra", pyproject)
 
     def test_readme_and_mcp_do_not_advertise_keyabra_product(self) -> None:
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -108,12 +113,18 @@ class ArtifactHygieneTests(unittest.TestCase):
             self.assertIn("Version: 0.2.1", metadata)
             self.assertNotIn("github.com", metadata.split("Description", 1)[0])
             self.assertNotIn("Keyabra", metadata)
+            entry_points = zipfile.ZipFile(wheels[-1]).read(
+                "noldorian-0.2.1.dist-info/entry_points.txt"
+            ).decode("utf-8")
+            self.assertNotIn("keyabra", entry_points)
+            self.assertNotIn("keyabra/", "\n".join(names))
         if sdists:
             names = tarfile.open(sdists[-1]).getnames()
             blob = "\n".join(names)
             self.assertNotIn("clipabra/", blob)
             self.assertNotIn("install_broker_macos.sh", blob)
             self.assertNotIn("broker_server.py", blob)
+            self.assertNotIn("/keyabra/", blob)
 
 
 if __name__ == "__main__":

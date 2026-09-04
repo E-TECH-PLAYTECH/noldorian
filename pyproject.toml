@@ -33,7 +33,6 @@ xadabra = "xadabra.cli:main"
 xabra = "xabra.cli:main"
 abra = "binabra.cli:main"
 xalakazam = "xalakazam.cli:main"
-keyabra = "keyabra.cli:main"
 
 [project.urls]
 Documentation = "https://pypi.org/project/noldorian/"
@@ -43,7 +42,6 @@ Homepage = "https://pypi.org/project/noldorian/"
 packages = ["src/noldorian"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"keyabra/src/keyabra" = "keyabra"
 "xadabra/src/xadabra" = "xadabra"
 "xabra/src/xabra" = "xabra"
 "binabra/src/binabra" = "binabra"
@@ -52,7 +50,6 @@ packages = ["src/noldorian"]
 [tool.hatch.build.targets.sdist]
 include = [
   "/src/noldorian",
-  "/keyabra/src/keyabra",
   "/xadabra/src/xadabra",
   "/xabra/src/xabra",
   "/binabra/src/binabra",
