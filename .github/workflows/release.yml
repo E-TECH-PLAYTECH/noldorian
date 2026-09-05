@@ -1,5 +1,9 @@
 name: release
 
+# GitHub is not the Noldorian factory. A GitHub Release must not upload to PyPI.
+# Factory: local `python3 -m build` → Google Drive packet → twine (project token) →
+# customers `pipx install noldorian` / `pip install noldorian` from PyPI.
+
 on:
   release:
     types: [published]
@@ -8,35 +12,11 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  refuse-github-pypi:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-      - name: Build distributions
+      - name: GitHub must not publish noldorian
         run: |
-          python -m pip install --upgrade build
-          python -m build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-          if-no-files-found: error
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/noldorian
-    permissions:
-      id-token: write
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: python-package-distributions
-          path: dist/
-      - name: Publish to PyPI with Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@release/v1
+          echo "Noldorian does not publish from GitHub."
+          echo "Factory is Drive then twine. Install is pip/pipx from PyPI."
+          exit 1

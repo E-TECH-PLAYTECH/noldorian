@@ -36,4 +36,4 @@ __all__ = [
     "prompt_secret",
     "run_with_env",
 ]
-__version__ = "0.2.2"
+__version__ = "0.2.3"

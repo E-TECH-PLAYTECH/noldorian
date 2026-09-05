@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 STATE_DIR = Path(os.environ.get("XABRA_STATE", Path.home() / ".local/state/xabra"))
 RECEIPT_DIR = STATE_DIR / "receipts"

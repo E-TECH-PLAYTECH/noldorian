@@ -14,7 +14,7 @@ fi
 
 PY="$(command -v python3)"
 echo "== installing noldorian from PyPI (user site) =="
-"$PY" -m pip install --user --quiet "noldorian>=0.2.2,<0.3" \
+"$PY" -m pip install --user --quiet "noldorian>=0.2.3,<0.3" \
   && echo "  noldorian: ok" \
   || { echo "  noldorian: FAILED" >&2; exit 1; }
 

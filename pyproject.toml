@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "noldorian"
-version = "0.2.2"
+version = "0.2.3"
 description = "Human-gated local credential vault, operator CLIs, and optional capability-broker client"
 readme = "README.md"
 requires-python = ">=3.9"

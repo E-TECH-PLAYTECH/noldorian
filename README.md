@@ -26,6 +26,21 @@ The first `noldorian` or `xabra` command creates `~/.config/noldorian/` (0700)
 and an empty `vault.env` (0600). Agents must not mkdir that directory. Fill
 names later with `xabra env set NAME` (hidden prompt). Values never print.
 
+`noldorian doctor` also reports whether PyPI has a newer version. It does not
+install it. Upgrade is an explicit download:
+
+```bash
+pipx upgrade noldorian
+# or
+noldorian upgrade --confirm
+```
+
+That replaces the package only. `~/.config/noldorian/vault.env` is not inside
+the install, so names stay. There is no background auto-update.
+
+Factory publish is Google Drive then `twine` to PyPI. GitHub releases do not
+upload the package.
+
 Doctor works with no extra daemon. An optional Gondolin extension may expose a
 Unix-socket capability broker; missing it is not a failure for everyday vault
 use.

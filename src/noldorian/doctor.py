@@ -10,6 +10,7 @@ from pathlib import Path
 from noldorian import __version__
 from noldorian.client import DEFAULT_SOCKET_PATH
 from noldorian import vault as vault_mod
+from noldorian.update import pypi_status
 
 
 def _which_cli(name: str) -> str | None:
@@ -110,4 +111,5 @@ def doctor_report(*, socket_path: Path | None = None) -> dict[str, object]:
         "clis": clis,
         "vault": vault,
         "extension": extension,
+        "update": pypi_status(__version__),
     }

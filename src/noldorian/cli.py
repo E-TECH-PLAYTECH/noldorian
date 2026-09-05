@@ -36,7 +36,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional Gondolin Unix socket (default: %(default)s)",
     )
     commands = parser.add_subparsers(dest="command", required=True)
-    commands.add_parser("doctor", help="install, vault, and extension status (no socket required)")
+    commands.add_parser("doctor", help="install, vault, update status, and extension (no socket required)")
+    upgrade = commands.add_parser(
+        "upgrade",
+        help="download a newer noldorian from PyPI (vault file is not replaced)",
+    )
+    upgrade.add_argument(
+        "--confirm",
+        action="store_true",
+        help="run pipx upgrade / pip install --upgrade against pypi.org (required to write)",
+    )
     commands.add_parser("status", help="check optional extension readiness")
     commands.add_parser("list", help="list public credential capabilities")
     commands.add_parser(
@@ -110,6 +119,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report.get("ok") else 1
 
+    if raw_argv and raw_argv[0] == "upgrade":
+        from noldorian.update import run_upgrade
+
+        receipt = run_upgrade(confirm="--confirm" in raw_argv)
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0 if receipt.get("ok") else 1
+
     args = build_parser().parse_args(raw_argv)
     if args.command == "doctor":
         from noldorian.doctor import doctor_report
@@ -117,6 +133,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         report = doctor_report(socket_path=args.socket)
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0 if report.get("ok") else 1
+
+    if args.command == "upgrade":
+        from noldorian.update import run_upgrade
+
+        receipt = run_upgrade(confirm=bool(args.confirm))
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0 if receipt.get("ok") else 1
 
     client = BrokerClient(args.socket)
     try:

@@ -28,13 +28,29 @@ class IsolatedHomeMixin:
         legacy_patch.start()
         self.addCleanup(env_patch.stop)
         self.addCleanup(legacy_patch.stop)
+        update_patch = patch(
+            "noldorian.doctor.pypi_status",
+            return_value={
+                "schema": "noldorian.update/v1",
+                "installed": "0.2.3",
+                "pypi_latest": "0.2.3",
+                "update_available": False,
+                "command": "pipx upgrade noldorian",
+                "index": "https://pypi.org/simple",
+                "vault_persists": True,
+                "auto_update": False,
+                "error": None,
+            },
+        )
+        update_patch.start()
+        self.addCleanup(update_patch.stop)
 
 
 class DoctorTests(IsolatedHomeMixin, unittest.TestCase):
     def test_doctor_ok_without_socket(self) -> None:
         report = doctor_report(socket_path=Path("/tmp/noldorian-no-such-broker.sock"))
         self.assertEqual(report["schema"], "noldorian.doctor/v1")
-        self.assertEqual(report["version"], "0.2.2")
+        self.assertEqual(report["version"], "0.2.3")
         self.assertEqual(report["extension"]["status"], "absent")
         self.assertTrue(report["ok"])
         self.assertIn("pip install noldorian", report["install"])

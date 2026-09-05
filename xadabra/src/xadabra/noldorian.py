@@ -8,7 +8,7 @@ import sys
 import textwrap
 
 PYPI_PACKAGE = "noldorian"
-PYPI_VERSION = "0.2.2"
+PYPI_VERSION = "0.2.3"
 
 
 def cmd_guide(_: argparse.Namespace) -> int:

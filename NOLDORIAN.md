@@ -14,4 +14,6 @@ require GitHub, a spellbook, or a privileged broker.
 | `abra` | bin-directory anchor |
 | `noldorian-mcp` | stdio MCP |
 
-Install: `python3 -m pip install noldorian`
+Install: `python3 -m pip install noldorian` or `pipx install noldorian`.
+Upgrade: `pipx upgrade noldorian` (or `noldorian upgrade --confirm`). The vault
+file is not inside the install. Factory publish is Drive then twine, not GitHub.

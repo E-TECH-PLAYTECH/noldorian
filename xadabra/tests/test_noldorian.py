@@ -25,7 +25,7 @@ class TestNoldorian(unittest.TestCase):
         buf = io.StringIO()
         with redirect_stdout(buf):
             self.assertEqual(cmd_install(args), 0)
-        self.assertIn("noldorian==0.2.2", buf.getvalue())
+        self.assertIn("noldorian==0.2.3", buf.getvalue())
         self.assertNotIn("git+", buf.getvalue())
 
     def test_unknown_pack_subcommand_is_gone(self) -> None:

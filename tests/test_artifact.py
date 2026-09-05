@@ -95,8 +95,8 @@ class ArtifactHygieneTests(unittest.TestCase):
 
     def test_wheel_and_sdist_omit_private_surfaces_when_built(self) -> None:
         dist = ROOT / "dist"
-        wheels = sorted(dist.glob("noldorian-0.2.2-py3-none-any.whl"))
-        sdists = sorted(dist.glob("noldorian-0.2.2.tar.gz"))
+        wheels = sorted(dist.glob("noldorian-0.2.3-py3-none-any.whl"))
+        sdists = sorted(dist.glob("noldorian-0.2.3.tar.gz"))
         if not wheels and not sdists:
             self.skipTest("dist/ artifacts not built yet")
         if wheels:
@@ -109,13 +109,13 @@ class ArtifactHygieneTests(unittest.TestCase):
             self.assertIn("xadabra/cli.py", names)
             self.assertIn("xalakazam/cli.py", names)
             metadata = zipfile.ZipFile(wheels[-1]).read(
-                "noldorian-0.2.2.dist-info/METADATA"
+                "noldorian-0.2.3.dist-info/METADATA"
             ).decode("utf-8")
-            self.assertIn("Version: 0.2.2", metadata)
+            self.assertIn("Version: 0.2.3", metadata)
             self.assertNotIn("github.com", metadata.split("Description", 1)[0])
             self.assertNotIn("Keyabra", metadata)
             entry_points = zipfile.ZipFile(wheels[-1]).read(
-                "noldorian-0.2.2.dist-info/entry_points.txt"
+                "noldorian-0.2.3.dist-info/entry_points.txt"
             ).decode("utf-8")
             self.assertNotIn("keyabra", entry_points)
             self.assertNotIn("keyabra/", "\n".join(names))

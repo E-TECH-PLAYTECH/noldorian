@@ -6,7 +6,7 @@ embedded — the command works wherever the package is pip-installed.
 
 from __future__ import annotations
 
-__version__ = "0.2.2"
+__version__ = "0.2.3"
 
 DEPLOY = """\
 # XALAKAZAM --deploy — Noldorian: what it is, how to install it, how to use it
